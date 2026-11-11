@@ -188,28 +188,29 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 
 | Section | Lines | Main functions |
 | --- | --- | --- |
-| 1. ASTRODYNAMICS ENGINE | 253-386 | ephemPos, ephemVel, stC, stS, lambert, propagate, captureDv, evalRoute, hohmann, hohT, tofRange, routeScore, tuneDE, polish, flybyConic, conicPoint, aimSolution, shadowCylinder, conjunctionAngle, captureOrbitPoint, stepEDL, moonState, evalMoonTour |
-| 2. MISSION DATA (simplified engineering models, real physics laws) | 387-501 | development, routeInfo, compute |
-| 3. SOUND (synthesized with Web Audio, no files) | 502-525 |  |
-| 4. RENDERER + TOON LOOK (cel shading with ink outlines) | 526-570 | OUT, smoothGeo, toonMat, mk, ctex, sprite, planetTex |
-| 5. EARTH SCENE: desert spaceport at golden hour | 571-626 |  |
-| 6. BUILDERS: spacecraft and rockets assembled from the player's choices | 627-729 | disposeTree, loadNasaModel, buildCraft, buildRocket, rebuildModels, emit, stepParticles, puff, burst, stepFireball |
-| 7. SPACE SCENE: real solar system (JPL elements) or Earth-Moon system | 730-823 | buildGrid, labelSprite, planetMesh, clearDyn, setWells, setupHelio, drawRoute, placeHelio, helioState, kepler, setupMoon, moonCraft, placeMoon |
-| 8. CAMERA RIG (drag rotate, scroll zoom, smooth) | 824-842 | fit, placeCam |
-| 9. GAME STATE + DESIGN UI | 843-963 | careerUnlocked, techUnlocked, awardCareer, renderCareer, resetTeam, openDevelopment, renderDevelopment, recordRole, renderTeam, setPhase, defaults, jdBounds, evalCfgRoute, initDirectRoute, updateKPIs, group, renderPanel, onDesign, designChecks, updateDesignUI, startMission, startDesign, goBrief |
-| 10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune | 964-1064 | startLegend, startRoute, legDefault, renderRoutePanel, routeChanged, refreshRoute, drawPork, renderFlybys, fuelStats, renderSummary, navButtons, wireNav, autoTune |
-| 11. LAUNCH (success or a dramatic failure) | 1065-1104 | resetLaunchScene, doLaunch, legendResult, banner, updateLaunch, updateFail, endLaunch |
-| 12. CRUISE: replay the real trajectory, flyby cinematics, events | 1105-1110 |  |
-| 12.1. PLANET-FRAME FLYBY CINEMATIC | 1111-1195 | triggerBurn, updateBurn, updateEnvironment, setupCaptureOrbit, drawCaptureOrbit, aeroPlan, aeroReadout, openAerobraking, finishAerobraking, toggleCamera, updateChase, startCinematic, drawFlyVectors, updateCinematic, endCinematic |
-| 12.2. B-PLANE AIMING (PLANAR SLICE) | 1196-1224 | openAim, changeAim, drawAim, confirmAim |
-| 12.3. ENTRY, DESCENT AND SURFACE OPERATIONS | 1225-1248 | startLanding, deployChute, updateLanding, startSurface, updateSurface |
-| 12.4. OPTIONAL PLANETARY MOON TOUR | 1249-1371 | openMoonTour, renderMoonTour, tuneMoonTour, drawMoonTour, flyMoonTour, updateMoonTour, skipMoonTour, startHelioCruise, startMoonCruise, buildSpeeds, setView, hudRows, updateViewFX, updateCruise, updateMoonCruise, crashFlyby, arrive, updateOps, loadFlareSnapshot, reloadFlareSnapshot, pickEvents, openEvent, commandDelay |
-| 13. REPORT + SHAREABLE MISSION PATCH | 1372-1436 | showReport, makePatch |
-| 13.1. SOURCES, ASSUMPTIONS AND NASA REFERENCE VIEWER | 1437-1474 | openSources |
-| 13.2. LIVE MODEL CHECKS | 1475-1485 | runModelChecks, renderModelChecks, previewReference |
-| 14. FLIGHT SCHOOL (guided tutorial) | 1486-1508 | tutShow, tutEvent |
-| 14.1. KEYBOARD HELP AND ACCESSIBLE CONTROLS | 1509-1521 | showShortcuts, closeShortcuts |
-| 15. LOOP | 1522-1542 | frame |
+| 1. ASTRODYNAMICS ENGINE | 257-411 | ephemPos, ephemVel, stC, stS, lambert, propagate, captureDv, evalRoute, hohmann, hohT, tofRange, routeScore, tuneDE, polish, flybyConic, conicPoint, aimSolution, shadowCylinder, conjunctionAngle, captureOrbitPoint, fuelLoad, fuelMass, availableImpulse, spendImpulse, makeLaunchStages, stepLaunchStages, captureState, partialVelocity, assessEncounter, stepEDL, moonState, evalMoonTour |
+| 2. MISSION DATA (simplified engineering models, real physics laws) | 412-527 | development, routeInfo, compute |
+| 3. SOUND (synthesized with Web Audio, no files) | 528-551 |  |
+| 4. RENDERER + TOON LOOK (cel shading with ink outlines) | 552-596 | OUT, smoothGeo, toonMat, mk, ctex, sprite, planetTex |
+| 5. EARTH SCENE: desert spaceport at golden hour | 597-652 |  |
+| 6. BUILDERS: spacecraft and rockets assembled from the player's choices | 653-755 | disposeTree, loadNasaModel, buildCraft, buildRocket, rebuildModels, emit, stepParticles, puff, burst, stepFireball |
+| 7. SPACE SCENE: real solar system (JPL elements) or Earth-Moon system | 756-849 | buildGrid, labelSprite, planetMesh, clearDyn, setWells, setupHelio, drawRoute, placeHelio, helioState, kepler, setupMoon, moonCraft, placeMoon |
+| 8. CAMERA RIG (drag rotate, scroll zoom, smooth) | 850-868 | fit, placeCam |
+| 9. GAME STATE + DESIGN UI | 869-989 | careerUnlocked, techUnlocked, awardCareer, renderCareer, resetTeam, openDevelopment, renderDevelopment, recordRole, renderTeam, setPhase, defaults, jdBounds, evalCfgRoute, initDirectRoute, updateKPIs, group, renderPanel, onDesign, designChecks, updateDesignUI, startMission, startDesign, goBrief |
+| 10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune | 990-1090 | startLegend, startRoute, legDefault, renderRoutePanel, routeChanged, refreshRoute, drawPork, renderFlybys, fuelStats, renderSummary, navButtons, wireNav, autoTune |
+| 11. LAUNCH (success or a dramatic failure) | 1091-1123 | resetLaunchScene, doLaunch, legendResult, banner, placeLaunchVehicle, updateLaunch, updateFail, endLaunch |
+| 12. CRUISE: replay the real trajectory, flyby cinematics, events | 1124-1129 |  |
+| 12.0. LIVE PROPELLANT LEDGER | 1130-1168 | impactSound, fuelMoment, initFuel, fuelBusy, burnEntry, requestBurn, deliverFuel, updateFuel, fuelRequirements, updateFuelHud, renderBurnReport, attitudeImpulseForMass, consumeAttitudeMass, requestAttitudeMass, updateAttitude, cancelPendingBurns, startAttitudeLoss, clearFailureView, prepareCaptureView, closeCaptureView, startCaptureEscape, resolveCorrection, updateSpaceFailure |
+| 12.1. PLANET-FRAME FLYBY CINEMATIC | 1169-1255 | triggerBurn, updateBurn, updateEnvironment, setupCaptureOrbit, drawCaptureOrbit, aeroPlan, aeroReadout, openAerobraking, finishAerobraking, toggleCamera, updateChase, startCinematic, drawFlyVectors, updateCinematic, requestPoweredFlyby, requestRejoin, endCinematic |
+| 12.2. B-PLANE AIMING (PLANAR SLICE) | 1256-1284 | openAim, changeAim, drawAim, confirmAim |
+| 12.3. ENTRY, DESCENT AND SURFACE OPERATIONS | 1285-1308 | startLanding, deployChute, updateLanding, startSurface, updateSurface |
+| 12.4. OPTIONAL PLANETARY MOON TOUR | 1309-1434 | openMoonTour, renderMoonTour, tuneMoonTour, drawMoonTour, flyMoonTour, updateMoonTour, skipMoonTour, startHelioCruise, startMoonCruise, buildSpeeds, setView, hudRows, updateViewFX, ensureCruiseBurn, updateCruise, updateMoonCruise, crashFlyby, arrive, resolveCapture, completeArrival, updateOps, loadFlareSnapshot, reloadFlareSnapshot, pickEvents, openEvent, commandDelay |
+| 13. REPORT + SHAREABLE MISSION PATCH | 1435-1500 | showReport, makePatch |
+| 13.1. SOURCES, ASSUMPTIONS AND NASA REFERENCE VIEWER | 1501-1540 | openSources |
+| 13.2. LIVE MODEL CHECKS | 1541-1551 | runModelChecks, renderModelChecks, previewReference |
+| 14. FLIGHT SCHOOL (guided tutorial) | 1552-1574 | tutShow, tutEvent |
+| 14.1. KEYBOARD HELP AND ACCESSIBLE CONTROLS | 1575-1587 | showShortcuts, closeShortcuts |
+| 15. LOOP | 1588-1608 | frame |
 
 Final expanded smoke PASS: all five missions completed flight/operations to reports, Voyager 2 NASA model/aiming/cinematic/chase passed, Saturn tour and Mars aerobraking passed, career persisted across reload, all 390 px sheets and reference viewers worked under /geodesic with reduced motion, and a separate overloaded lunar launch failed as expected. Zero console/page errors. Final targeted Voyager/chase recheck also passed. README and phase status are current; all authorized implementation phases are complete with the two documented data availability fallbacks and hardware frame-rate measurement outstanding.
 
@@ -244,3 +245,16 @@ Final model decision: chase uses the articulated engineering spacecraft so Sun/E
 - Dynamic burn shortfalls remain in the outstanding plan, keeping low-fuel warnings honest. Depletion is recorded even when a tank empties exactly at burn completion.
 - Added impact-effect telemetry to test that explosions happen only at actual impact. Browser suite verifies all five requested failure paths plus a separate propagated collision, with zero errors. Landing test delivers some thrust before running dry; capture/attitude/miss tests assert no explosion.
 - Unit tests verify independent attitude storage and lunar empty-tank free fall. Full existing models/astro and expanded mobile/reduced-motion/aerobraking smoke pass. Next: final documentation and regression audit.
+
+## Live propellant - Part 5: final regression and documentation audit
+
+- README now documents live tanks, equivalent launch stages, partial burns, physically distinct failure outcomes, separate attitude control and the new test commands.
+- Capture execution has a planet-centred periapsis close-up with a retrograde plume and live gauge; successful insertion returns to the actually computed orbit. The failed-capture movie keeps a coasting hyperbola.
+- A nominal planetary cruise correction removes a labelled simulated navigation offset; under-delivery propagates the residual error. Mars orbit lowering now starts from the actual captured eccentricity, including a partially delivered capture.
+- Verified lunar GM against the JPL satellite physical-parameter table (4902.800 km3/s2), replacing the initial approximate literal with an SI engine constant. Planet momentum exchange now uses current wet mass; lunar HUD propellant is live; report launch mass remains the original loaded mass even after hardware damage.
+- All eight fuel-browser scenarios pass: live kg animation, overloaded stage burnout, partial capture escape, aim/rejoin starvation, correction miss, descent exhaustion, attitude loss and actual correction impact. Tests verify no explosion for coasting/attitude/miss, and one impact effect at collision.
+- Unit checks cover rocket-equation conservation/frame partitioning, tank separation, xenon at launch wet mass, overload timing/altitude, free fall and partial capture/correction geometry. Existing historical and engineering tests remain passing.
+- Final expanded mission smoke runs all missions plus Voyager 2, mobile layout, reduced motion and aerobraking under a project subpath. Final completion result is recorded below after the run.
+- Scientific assumptions are explicit in Sources: game stage sizing/overload governor, separate tank budgets, equivalent attitude impulse, compressed visual burn time and tracking fade, planar patched-conic encounter assessment. No invented NASA datasets or stage specifications were added.
+
+Live propellant final verification PASS: node tests/fuel.test.mjs, node tests/models.test.mjs, node tests/astro.test.mjs, node tests/fuel-browser.test.mjs, and expanded tests/smoke.mjs with TEST_AERO, TEST_MOBILE, TEST_REDUCED and /geodesic project subpath. All required failure cases and existing tests pass; zero console/page errors. Each implementation part was committed and pushed. No work remains for this feature.

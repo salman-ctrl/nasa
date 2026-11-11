@@ -20,6 +20,18 @@ For GitHub Pages, serve the repository root on the `main` branch. Local asset/da
 - At arrival, replay capture, optionally aerobrake at Mars or plan a Jupiter/Saturn moon tour. Land with parachute/ignition timing or guidance; collect surface science with a lander or rover.
 - Send operations commands across the displayed real light time. Review science, engineering consequences and live model checks, and download a mission patch.
 
+## Live propellant
+
+The persistent tank display shows kilograms and the percentage remaining in the main chemical/xenon tanks, plus a separate attitude-control reserve. Red means the remaining planned burns require more propellant than is available. Every executed manoeuvre removes mass with the rocket equation at the current wet mass; descent and corrections use the same onboard supply. There are no free tank refills at arrival or landing. Ion corrections have their own xenon load and specific impulse.
+
+Ascent has separate equivalent booster/core tanks. Their loads and overload-dependent mass-flow governor are game values calibrated to the existing launcher capacity curve, rather than NASA stage specifications. An overloaded vehicle reaches a computed fuel cutoff, then coasts ballistically under altitude-dependent Earth gravity. Ascent scale and replay time are compressed; atmospheric drag is omitted.
+
+An empty spacecraft tank causes engine cutoff, not an explosion. Capture uses delivered impulse and vis-viva energy: a bound shortfall leaves a more eccentric orbit, while an unbound result flies past the target and reports **Lost to deep space**. Partial aiming/rejoin corrections retain only their delivered impulse and propagate the resulting path to the moving next body. A miss coasts past; an intersection with the safety radius produces an impact. Landing thrust stops when the shared tank runs dry and descent continues under gravity and, on Mars, drag. Impact effects occur only at collision/touchdown.
+
+Pointing, wheel desaturation, aiming and anomaly recovery spend a separate attitude reserve. Exhaustion causes a slow tumble, loss of Earth pointing and zero downlink, with a **Loss of attitude control** report. The 1% dry-mass reserve, equivalent 60 s control-thruster Isp and pointing duty are game assumptions. Control rows show scalar equivalent impulse, not net translational delta-v.
+
+The report lists planned and delivered m/s, kilograms spent, tank identity and the depletion moment for every burn. Descent's planned value is its design allowance; delivered impulse is integrated from actual thrust. Burn execution times and encounter-tracking fade are illustrative; orbit energy, mass loss and partial-correction propagation use the physics model.
+
 Career best stars unlock Moon → Mars → Jupiter → Saturn → Neptune, budget bonuses, a larger dish, autonomy, aerobraking and ion cruise corrections. Storage is optional; blocked or malformed local storage does not prevent free play.
 
 Press **?** for shortcuts. **C** switches Map/Chase; **N/E** select gravity views; **Space** pauses cruise; **S** skips a flyby; **M** toggles sound; **T** auto-tunes. Drag to orbit, scroll or use two-finger touch zoom. At phone widths, use the Parts/Plan, Review/Summary and Crew bottom-sheet tabs. Reduced-motion preferences shorten flyby scenes and disable shake, animated UI and automatic camera orbit.
@@ -31,12 +43,16 @@ Install development tools with `npm install --prefix tests`, then run:
 ```sh
 node tests/astro.test.mjs
 node tests/models.test.mjs
+node tests/fuel.test.mjs
+node tests/fuel-browser.test.mjs
 node tests/smoke.mjs
 ```
 
 Smoke uses installed Chrome by default. Set `PW_CHANNEL=chromium` after installing Playwright's Chromium if needed. Optional environment flags: `TEST_MOBILE=1`, `TEST_REFERENCE=1`, `TEST_REDUCED=1`, `TEST_AERO=1`, `TEST_BASE_PATH=/geodesic`, and `SMOKE_MISSIONS=voyager2` for a shorter targeted run. Screenshots under `tests/` are ignored by Git.
 
 Historical checks cover Voyager 1 Jupiter periapsis, New Horizons launch C3/Jupiter periapsis, Voyager 2 safety/Saturn periapsis, and Lambert propagation residuals below 1 km. Four fixed optimizer seeds must produce at least three safe Jupiter capture routes below 6 km/s. Additional checks cover conic geometry, aiming, EDL, engineering, development and moon tours. Browser smoke drives all missions and Voyager 2 through reports with zero console or page errors; a separate overloaded lunar vehicle exercises launch failure.
+
+Fuel tests verify rocket-equation conservation and frame partitioning, wet-mass xenon sizing, independent attitude storage, burnout timing, ballistic impact, capture energy and empty-tank lunar free fall. Browser cases inject reproducible shortages through `window.__game` and cover overloaded launch, partial capture, aim/rejoin miss, correction impact, descent exhaustion and attitude depletion. They assert that coasting failures do not explode and that collision effects occur only on impact. The existing Voyager smoke deliberately moves the aim point out and back; this now consumes real reserve and can correctly miss Saturn.
 
 ## Data and credits
 

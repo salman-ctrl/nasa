@@ -123,3 +123,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Orbit/surface operations now require an anomaly command. Effects apply only after ephemeris Earth-target one-way light time (Moon uses lunar range), compressed to a few screen seconds and displayed truthfully.
 - Autonomy reduces delay-related observing loss. Pending commands cannot be bypassed with Continue; report records actual delay and autonomy choice.
 - Tests: full physics/EDL and browser smoke pass, including delayed operations commands and reports, with zero errors. Next: optional moon tours.
+
+## Phase 4.4 - optional moon tours
+- Added a planet-centred tour planner at Jupiter/Saturn with sequence chips, leg timing, auto-tune, transfer preview and replay. Available moons: Io, Europa, Ganymede, Callisto, Titan and Enceladus.
+- Real GM/radius and mean orbital radii come from JPL; circular coplanar orbits and phase zero are explicitly labelled assumptions. Lambert and Kepler propagation reuse the main engine; moon flybys compute safe periapsis and powered mismatch. Tour delta-v spends reserve, science and final capture orbit update.
+- Tests: model test finds a feasible Saturn tour and verifies endpoint propagation; browser auto-tunes and flies that tour to report. Full regressions and all-mission smoke pass with zero errors.
+- Default Jovian tour uses outer Ganymede/Callisto; adding all four moons may require difficult alignments. Next: persistent career and tech.

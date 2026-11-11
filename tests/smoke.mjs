@@ -1,0 +1,21 @@
+﻿import {chromium} from 'playwright';
+import {createServer} from 'node:http';
+import {readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const server=createServer(async(req,res)=>{try{if(req.url==='/favicon.ico'){res.writeHead(204);return res.end()}const file=new URL('..'+(req.url==='/'?'/index.html':req.url),import.meta.url);const data=await readFile(file);res.setHeader('Content-Type',file.pathname.endsWith('.html')?'text/html':file.pathname.endsWith('.json')?'application/json':'application/octet-stream');res.end(data)}catch{res.writeHead(404);res.end()}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true,args:['--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+try{
+const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];
+page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.waitForFunction(()=>window.__game,{timeout:60000});
+for(const id of ['moon','mars','jupiter','saturn','neptune','voyager2']){
+await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:true});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
+if(id==='jupiter')await page.evaluate(()=>window.__game.tune());
+await page.evaluate(()=>window.__game.launch());
+const result=await page.evaluate(()=>window.__game.runTo('report'));assert.equal(result,'report',id);
+console.log(id,await page.locator('#repTitle').textContent());assert.ok(await page.evaluate(()=>window.__game.patch())>1000);
+}
+assert.deepEqual(errors,[]);console.log('Smoke passed: all missions and Voyager 2, zero console errors');
+}finally{await browser.close();await new Promise(r=>server.close(r))}
+

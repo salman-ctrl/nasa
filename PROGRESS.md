@@ -64,3 +64,8 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Tests: historical/conic/aiming regressions pass; browser smoke passes with no errors. Added interactive browser assertions for changed aim and cinematic Skip.
 - Decision: rejoin corrections preserve the remaining planned mission; this is stated in the aim panel. Full 3D B-plane targeting is outside the existing planar model.
 - Next: historical ghost race.
+
+## Phase 1.4 - historical ghost race
+- Legendary missions show a translucent spacecraft on the historical trajectory, evaluated at equal elapsed mission time. HUD reports ahead/behind days at equal normalized route progress.
+- Phase 1 complete. Tests: physics regressions and interactive all-mission smoke pass; zero browser errors, aim-preview changes checked, cinematic Skip checked. Screenshots saved under tests/ (ignored).
+- Known limitation: the race uses route progress, rather than geometric proximity, to compare differing launch dates. Next: Phase 2.1 chase camera.

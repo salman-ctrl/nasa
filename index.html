@@ -703,6 +703,7 @@ function setupHelio(rr,jdView){
   dyn.add(buildGrid(Math.max(rMax*1.35,80)));
   SYS.route=new THREE.Group();dyn.add(SYS.route);
   const cr=buildCraft(cfg);cr.scale.setScalar(.45);SYS.craft=new THREE.Group();SYS.craft.add(cr);SYS.craft.add(sprite(0xffb36b,7,.9));dyn.add(SYS.craft);
+  if(legend&&histRR){const ghost=buildCraft(cfg),mat=new THREE.MeshBasicMaterial({color:0xace9ee,transparent:true,opacity:.25,depthWrite:false});ghost.traverse(o=>{if(o.isMesh)o.material=mat});ghost.scale.setScalar(.45);SYS.ghost=ghost;dyn.add(ghost);const tag=labelSprite('Historical '+legend.name,'#ace9ee');SYS.ghostTag=tag;dyn.add(tag)}
   SYS.pulse=sprite(0xffe2a0,1,0,ringTex);dyn.add(SYS.pulse);
   // Newton arrows
   SYS.arrS=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),5,0xf5a524,1.6,1);SYS.arrP=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),5,0xff6a3a,1.6,1);dyn.add(SYS.arrS,SYS.arrP);
@@ -1100,6 +1101,7 @@ function updateCruise(dt){if(cinematic){updateCinematic(dt);return}if(cr.mode===
     startCinematic(f);return;
   }
   const s=helioState(cr.jd),pos=toVis(s.r,.3);SYS.craft.position.copy(pos);
+  if(SYS.ghost){const elapsed=cr.jd-cr.jd0,jd=Math.min(histRR.jds.at(-1),histRR.jds[0]+elapsed);let leg=histRR.legs[0];for(const l of histRR.legs)if(jd>=l.jd0)leg=l;const state=propagate(leg.r1,leg.v1,clamp((jd-leg.jd0)*DAY,0,leg.dt),MU_SUN);SYS.ghost.position.copy(toVis(state.r,1));SYS.ghostTag.position.copy(SYS.ghost.position).y+=4;SYS.ghost.lookAt(SYS.ghost.position.x+state.v[0],1,SYS.ghost.position.z-state.v[1])}
   const ah=propagate(s.r,s.v,DAY*2,MU_SUN),pa=toVis(ah.r,.3);if(pa.distanceToSquared(pos)>1e-8)SYS.craft.lookAt(pa);
   if(SYS.done){const idx=s.li*SYS.N+Math.round(s.f*SYS.N)+1;SYS.done.geometry.setDrawRange(0,idx)}
   placeHelio(cr.jd);
@@ -1113,6 +1115,7 @@ function updateCruise(dt){if(cinematic){updateCinematic(dt);return}if(cr.mode===
   const nf=cr.fbs.find(f=>!f.done),nxt=nf?`${PH[nf.id].name} in ${fmtDur(nf.jd-cr.jd)}`:`${PH[cfg.rr.seq[cfg.rr.seq.length-1]].name} in ${fmtDur(cr.jdEnd-cr.jd)}`;
   $('hudPhase').textContent=near?`${PH[near.id].name} flyby`:`Leg ${s.li+1}: ${PH[cfg.rr.seq[s.li]].name} → ${PH[cfg.rr.seq[s.li+1]].name}`;$('hudDay').textContent=fmtDate(cr.jd);$('hudBar').style.width=(cr.p*100)+'%';
   const rows=[['From Sun',fmt(rM/AU,2)+' AU'],['Speed (Sun frame)',fmt(vM/1000,2)+' km/s'],['Signal delay',dE/CL<60?fmt(dE/CL,1)+' s':dE/CL<7200?fmt(dE/CL/60,1)+' min':fmt(dE/CL/3600,2)+' h'],['Next',nxt]];
+  if(legend){const lead=cr.p*histRR.tof-(cr.jd-cr.jd0);rows.push(['Ghost race',`${lead>=0?'Ahead':'Behind'} by ${fmt(Math.abs(lead),1)} days`],['Race measure','Equal route progress'])}
   if(view==='einstein')rows.push(['Clock vs Earth',`${lag>=0?'−':'+'}${fmt(Math.abs(lag)*1000,2)} ms`,lag>=0?'text-bad':'text-ok']);
   hudRows(rows);
   if(cr.jd>=cr.jdEnd)arrive()}

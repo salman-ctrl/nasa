@@ -1,0 +1,248 @@
+[
+  {
+    "id": "moon",
+    "kind": "lander",
+    "title": "Science success, budget pain",
+    "phases": [
+      {
+        "phase": "brief",
+        "at": 986.1000000238419
+      },
+      {
+        "phase": "design",
+        "at": 2241.800000011921
+      },
+      {
+        "phase": "development",
+        "at": 4170
+      },
+      {
+        "phase": "design",
+        "at": 4495.800000011921
+      },
+      {
+        "phase": "launch",
+        "at": 5091.4000000059605
+      },
+      {
+        "phase": "cruise",
+        "at": 19867.100000023842
+      },
+      {
+        "phase": "capture",
+        "at": 35329.20000001788
+      },
+      {
+        "phase": "landing",
+        "at": 39697.70000001788
+      },
+      {
+        "phase": "ops",
+        "at": 71890
+      },
+      {
+        "phase": "report",
+        "at": 83437.70000001788
+      }
+    ],
+    "projectionErrors": [],
+    "launchFrames": 530,
+    "pauseStates": [
+      "Cruise paused: burn in progress",
+      "Cruise paused: waiting for your decision"
+    ],
+    "errors": []
+  },
+  {
+    "id": "mars",
+    "kind": "rover",
+    "title": "Partial success",
+    "phases": [
+      {
+        "phase": "brief",
+        "at": 1821.4000000059605
+      },
+      {
+        "phase": "design",
+        "at": 3505.199999988079
+      },
+      {
+        "phase": "development",
+        "at": 5376.4000000059605
+      },
+      {
+        "phase": "route",
+        "at": 5861.799999982119
+      },
+      {
+        "phase": "launch",
+        "at": 6538.4000000059605
+      },
+      {
+        "phase": "cruise",
+        "at": 21370.29999998212
+      },
+      {
+        "phase": "capture",
+        "at": 41046.40000000596
+      },
+      {
+        "phase": "landing",
+        "at": 44464.09999999404
+      },
+      {
+        "phase": "ops",
+        "at": 76796.40000000596
+      },
+      {
+        "phase": "report",
+        "at": 90734.5
+      }
+    ],
+    "projectionErrors": [],
+    "launchFrames": 537,
+    "pauseStates": [
+      "Cruise paused: burn in progress",
+      "Cruise paused: waiting for your decision"
+    ],
+    "errors": []
+  },
+  {
+    "id": "jupiter",
+    "kind": "orbiter",
+    "title": "Partial success",
+    "phases": [
+      {
+        "phase": "brief",
+        "at": 1459.5
+      },
+      {
+        "phase": "design",
+        "at": 2735.399999976158
+      },
+      {
+        "phase": "development",
+        "at": 5855.899999976158
+      },
+      {
+        "phase": "route",
+        "at": 6390.399999976158
+      },
+      {
+        "phase": "launch",
+        "at": 10250.299999982119
+      },
+      {
+        "phase": "cruise",
+        "at": 25070.5
+      },
+      {
+        "phase": "capture",
+        "at": 90246
+      },
+      {
+        "phase": "ops",
+        "at": 96088.09999999404
+      },
+      {
+        "phase": "report",
+        "at": 109936.69999998808
+      }
+    ],
+    "projectionErrors": [],
+    "launchFrames": 544,
+    "pauseStates": [
+      "Cruise paused: burn in progress",
+      "Cruise paused: waiting for your decision"
+    ],
+    "errors": []
+  },
+  {
+    "id": "saturn",
+    "kind": "orbiter",
+    "title": "Partial success",
+    "phases": [
+      {
+        "phase": "brief",
+        "at": 2341.899999976158
+      },
+      {
+        "phase": "design",
+        "at": 3383.0999999940395
+      },
+      {
+        "phase": "development",
+        "at": 6064.5
+      },
+      {
+        "phase": "route",
+        "at": 6693.399999976158
+      },
+      {
+        "phase": "launch",
+        "at": 7599.0999999940395
+      },
+      {
+        "phase": "cruise",
+        "at": 22440.29999998212
+      },
+      {
+        "phase": "capture",
+        "at": 50439.09999999404
+      },
+      {
+        "phase": "ops",
+        "at": 54092
+      },
+      {
+        "phase": "report",
+        "at": 68300
+      }
+    ],
+    "projectionErrors": [],
+    "launchFrames": 541,
+    "pauseStates": [
+      "Cruise paused: burn in progress",
+      "Cruise paused: waiting for your decision"
+    ],
+    "errors": []
+  },
+  {
+    "id": "voyager2",
+    "kind": "legend",
+    "title": "As good as the original",
+    "phases": [
+      {
+        "phase": "brief",
+        "at": 2815.9000000059605
+      },
+      {
+        "phase": "route",
+        "at": 3798.800000011921
+      },
+      {
+        "phase": "launch",
+        "at": 4896.800000011921
+      },
+      {
+        "phase": "cruise",
+        "at": 19813.30000001192
+      },
+      {
+        "phase": "ops",
+        "at": 100018.5
+      },
+      {
+        "phase": "report",
+        "at": 104074.09999999404
+      }
+    ],
+    "projectionErrors": [],
+    "launchFrames": 531,
+    "pauseStates": [
+      "Cruise paused: burn in progress",
+      "Cruise paused: waiting for your decision"
+    ],
+    "errors": []
+  }
+]

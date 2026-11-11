@@ -222,3 +222,10 @@ Final model decision: chase uses the articulated engineering spacecraft so Sun/E
 - Burn rows retain planned/delivered delta-v, kilograms and depletion moment. Physical failure routing and attitude consumption follow in Parts 3-4; stage propellant follows in Part 2.
 - Sources label tank allocations and compressed burn durations as game models; rocket equation links NASA Glenn.
 - Tests: fuel conservation, partition independence, empty-tank bounds and separate xenon pass; engineering, historical regressions and all-mission browser smoke pass with zero errors.
+
+## Live propellant - Part 2: launch stages
+- Added equivalent booster/core tanks with separate kg/% bars. Stage mass flow scales with payload demand/capacity ratio; computed burnout time and altitude replace the fixed five-second failure trigger.
+- Ascent integrates rocket-equation impulse on current vehicle/stage mass and altitude-dependent Earth gravity. Exhaustion stops thrust; failed vehicles retain their velocity and follow ballistic motion until impact. Only impact explodes.
+- Stage dry/fuel loads, overload governor and compressed replay are explicit game models, not specifications of named rockets. Report logs stage delivered impulse and burnout time/altitude.
+- Tests: heavier overload unit case burns out at 45 s versus 90 s, lower in altitude; ballistic impact passes. New browser tests check animated kg depletion against rocket-equation mass loss, low warning, overload cutoff/impact and report moment. Full engineering/astro and existing all-mission smoke pass. Zero console/page errors.
+- Next: physically resolve partial capture and correction burns, then landing/attitude failures.

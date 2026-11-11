@@ -258,3 +258,12 @@ Final model decision: chase uses the articulated engineering spacecraft so Sun/E
 - Scientific assumptions are explicit in Sources: game stage sizing/overload governor, separate tank budgets, equivalent attitude impulse, compressed visual burn time and tracking fade, planar patched-conic encounter assessment. No invented NASA datasets or stage specifications were added.
 
 Live propellant final verification PASS: node tests/fuel.test.mjs, node tests/models.test.mjs, node tests/astro.test.mjs, node tests/fuel-browser.test.mjs, and expanded tests/smoke.mjs with TEST_AERO, TEST_MOBILE, TEST_REDUCED and /geodesic project subpath. All required failure cases and existing tests pass; zero console/page errors. Each implementation part was committed and pushed. No work remains for this feature.
+
+## Real-player bug fixes - Group 1: launch and elapsed time (1-7, 19)
+- Launch camera targets follow the rocket immediately; only yaw/pitch/distance are smoothed, and distance widens with altitude. Added read-only projected-bound telemetry and checks on every rendered ascent/fall frame.
+- Status advances through liftoff, approximate max-Q region, booster separation, core cutoff and failure. Exhaust particles are spaced along distance travelled. Sky Moon uses the same grey texture and approximately half-degree angular diameter; decorative purple ring removed.
+- Explicit equivalent game stage loads retain fixed mass flow/burn time for every payload. Overload reduces delivered impulse; it does not speed up fuel consumption. Pitch approaches horizontal gradually. Stages integrate on fixed 0.05 s physics steps; Sources clearly labels the approximation.
+- Launch burn ledger now uses direct kg formatting and distinguishes nominal burnout from exhaustion. Planned nominal impulse is derived from the same staged mass model.
+- Removed the 0.05 s render-delta clamp: ordinary slow frames now advance real elapsed time, with a 0.25 s guard only for large gaps.
+- Verification at ts(1), using actual UI buttons: Moon orbiter completed Launch-Cruise-Capture-Operations-Report in about 46 s, zero errors, rocket in frame on all 529 sampled launch frames. Overloaded Moon vehicle reached ballistic impact/report with 691 in-frame launch/fall samples and zero errors. Screenshots saved in tests/shots/. Astro/fuel regressions pass; overload unit test now requires unchanged burn time and lower delivered impulse.
+- Next: report outcome bars, reaction-wheel accounting, modal layering and solo report wording.

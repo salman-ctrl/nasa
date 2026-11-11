@@ -23,7 +23,7 @@ console.log('Rocket-equation fuel conservation, partitioning and empty-tank chec
 
 const light=a.makeLaunchStages({m0:6000},4000,2000),heavy=a.makeLaunchStages({m0:6000},8000,2000);
 for(const stage of [light,heavy]){for(let i=0;i<1000&&!stage.cutoff;i++)a.stepLaunchStages(stage,1);assert.ok(stage.cutoff);assert.equal(stage.stages[0].remaining,0);}
-assert.ok(heavy.cutoff.time<light.cutoff.time&&heavy.cutoff.altitude<light.cutoff.altitude,'heavier overload exhausts earlier and lower');
+assert.ok(Math.abs(heavy.cutoff.time-light.cutoff.time)<.001&&heavy.impulse<light.impulse,'overload keeps burn time and reduces delivered impulse');
 for(let i=0;i<10000&&!heavy.impact;i++)a.stepLaunchStages(heavy,1,false);
 assert.equal(heavy.impact,true);console.log('Stage burnout and ballistic impact checks passed',light.cutoff.time,heavy.cutoff.time);
 

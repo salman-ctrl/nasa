@@ -48,6 +48,7 @@ tailwind.config={theme:{extend:{
   .modal[hidden]{display:none}
   .card-m{cursor:pointer;transition:transform .15s,border-color .15s}
   .card-m:hover{transform:translateY(-3px);border-color:#e2772e}
+  #sourcesModal{z-index:60}#modelReference{z-index:70}
   #banner{text-shadow:0 2px 0 rgba(43,38,34,.35)}
   input[type=range]{accent-color:#1f6f6a;width:100%}
   .scroll-thin{scrollbar-width:thin}
@@ -148,6 +149,8 @@ tailwind.config={theme:{extend:{
 <div id="teamBar" class="glass fixed left-1/2 bottom-3 -translate-x-1/2 p-2 flex gap-1 flex-wrap z-20 max-w-[700px]" hidden></div>
 <div id="developmentModal" class="modal" hidden><section class="glass max-w-[550px] w-full p-4"><h2 class="font-extrabold text-lg">Development schedule</h2><p class="text-xs text-muted">Mission Lead chooses when the spacecraft will be ready. Faster development costs money (game model).</p><label class="block mt-3">Mission start <input id="developmentStart" type="date" value="2026-01-01" class="btn"></label><div id="developmentChoices" class="grid grid-cols-3 gap-2 mt-3"></div><p id="developmentReadout" class="text-xs mt-3"></p><button id="developmentGo" class="btn primary mt-3">Confirm schedule</button></section></div>
 <div id="tourModal" class="modal" hidden><section class="glass max-w-[700px] w-full p-4 max-h-full overflow-y-auto"><h2 class="font-extrabold text-lg">Optional moon tour</h2><p class="text-xs text-muted">JPL GM, radii and mean orbital radii; circular coplanar paths with assumed phase zero. These are not moon ephemerides.</p><div id="tourChoices" class="flex gap-1 flex-wrap mt-2"></div><div id="tourLegs" class="mt-2"></div><canvas id="tourCanvas" width="800" height="350" class="w-full mt-2"></canvas><p id="tourReadout" class="text-xs"></p><div class="flex gap-2 mt-3"><button id="tourSkip" class="btn">Skip tour</button><button id="tourTune" class="btn">Auto-tune</button><button id="tourGo" class="btn primary">Fly tour</button></div><p class="text-xs mt-2"><a href="https://ssd.jpl.nasa.gov/sats/phys_par/" target="_blank" rel="noopener" class="underline">JPL physical data</a> / <a href="https://ssd.jpl.nasa.gov/sats/elem/" target="_blank" rel="noopener" class="underline">orbital radii</a></p></section></div>
+<div id="sourcesModal" class="modal" hidden><section class="glass max-w-[1000px] w-full max-h-full overflow-y-auto p-5"><div class="flex justify-between gap-2"><h2 class="font-extrabold text-xl">Sources &amp; assumptions</h2><button id="sourcesClose" class="btn">Close</button></div><div id="sourcesContent" class="grid sm:grid-cols-2 gap-4 text-xs mt-4"></div><h3 class="font-extrabold mt-4">NASA spacecraft reference viewer</h3><div id="modelButtons" class="flex gap-2 mt-2"><button class="btn" data-model="voyager">Voyager</button><button class="btn" data-model="juno">Juno</button><button class="btn" data-model="cassini">Cassini</button></div><p id="sourceWeather" class="text-xs mt-3"></p><button id="reloadWeather" class="btn text-xs mt-2">Reload local DONKI snapshot</button><div id="modelChecks" class="mt-4 overflow-x-auto"></div></section></div>
+<section id="modelReference" class="glass fixed right-3 top-[148px] w-[300px] p-4 z-30" hidden><h2 id="modelReferenceTitle" class="font-extrabold text-lg"></h2><p class="text-xs mt-2">NASA 3D Resources geometry. Toon materials replace the original finish. Drag to rotate; scroll to zoom.</p><button id="modelReferenceClose" class="btn mt-3">Back to Sources</button></section>
 <!-- tutorial coach -->
 <div id="coach" class="glass fixed z-50 w-[300px] p-3.5 flex flex-col gap-2" hidden>
   <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold tracking-[.12em] uppercase text-flame">Flight school</span><span id="coachN" class="text-[11px] font-bold text-muted"></span></div>
@@ -164,6 +167,7 @@ tailwind.config={theme:{extend:{
         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">You are the mission architect.</h1>
         <p class="text-muted mt-1 max-w-[72ch] leading-relaxed">Design a spacecraft, then find a route where planets lend you speed. Every gravity assist you plan saves tonnes of propellant, and every tonne saved means a cheaper rocket or more science. Planet positions come from NASA JPL orbital elements, and the trajectory math is the same patched-conic method mission designers use.</p>
       </div>
+      <button id="btnSources" class="btn">Sources &amp; assumptions</button>
       <button id="btnSchool" class="btn primary">New here? Flight school (60 s) →</button>
     </div>
     <label class="block mt-4 font-bold">Mode <select id="playMode" class="btn"><option value="free">Free play</option><option value="career">Career</option></select></label><p id="careerStatus" class="text-xs text-muted mt-2"></p><label class="block mt-4 font-bold">Crew <select id="crewCount" class="btn"><option value="1">1 player</option><option value="2">2 players</option><option value="3">3 players</option><option value="4">4 players</option></select></label>
@@ -200,6 +204,7 @@ tailwind.config={theme:{extend:{
     <ul id="repLessons" class="mt-2 grid gap-2 text-[13px] leading-relaxed"></ul>
     <div class="mt-4 p-3 rounded-lg bg-paper2 border border-line"><p class="text-[11px] font-extrabold tracking-[.1em] uppercase text-accent">Real mission check</p><p id="repReal" class="mt-1 leading-relaxed"></p></div>
     <div class="flex gap-2 mt-5 flex-wrap">
+      <button id="reportSources" class="btn">Sources &amp; model checks</button>
       <button id="btnRedesign" class="btn primary">Try again</button>
       <button id="btnShare" class="btn dark">Save mission patch ⤓</button>
       <button id="btnNew" class="btn">Choose another mission</button>
@@ -1012,6 +1017,7 @@ function renderSummary(){const rr=cfg.rr,el=$('rsum');
   const row=(k,v,cl='')=>`<span class="text-muted font-semibold">${k}</span><span class="font-mono font-bold text-right ${cl}">${v}</span>`;
   h+=`<div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11.5px]">${row('Launch energy C3',fmt(rr.c3,1)+' km²/s²')}${row('Free speed (flybys)','+'+fmt(rr.free/1000,2)+' km/s','text-ok')}${row('Engine Δv in space',fmt(rr.dvSc/1000,2)+' km/s')}${row('Total Δv from orbit',fmt(rr.dvEq/1000,2)+' km/s')}${row('Launch',fmtDate(rr.jds[0]))}${row('Arrival',fmtDate(rr.jds[rr.jds.length-1]))}</div>`;
   const C=[];const ck=(st,t)=>C.push(`<div class="chk ${st}"><i>${st==='ok'?'✓':st==='bad'?'✕':'!'}</i><span>${t}</span></div>`);
+  if(rr.jds.some(j=>j<jdOf(1800,1,1)||j>jdOf(2050,12,31)))ck('warn','Dates outside 1800-2050 extrapolate the JPL approximate elements.');
   if(rr.crash)ck('bad',`${rr.crash} flyby${rr.crash>1?'s':''} would hit the planet. Launching anyway ends in a crash.`);else if(rr.flybys.length)ck('ok','All flybys pass safely');
   if(!legend){const r=compute(cfg);res=r;ck(r.launchOK?'ok':'bad',r.launchOK?`${r.L.name} can lift ${fmt(r.wet)} kg to C3 ${fmt(rr.c3,0)}`:`${r.L.name} lifts only ${fmt(r.cap)} kg to C3 ${fmt(rr.c3,0)}; spacecraft is ${fmt(r.wet)} kg`);
     ck(r.cost<=r.budget?'ok':'bad',r.cost<=r.budget?`$${fmt(r.cost)}M of $${fmt(r.budget)}M (long cruises cost operations money)`:`Over budget by $${fmt(r.cost-r.budget)}M`);
@@ -1399,6 +1405,47 @@ function makePatch(){const W=1080,H=1350,c=document.createElement('canvas');c.wi
     const fs=fuelStats(rr);g.fillStyle='#8ff0c8';g.fillText(`+${fmt(rr.free/1000,1)} km/s free speed · ${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,1)} t propellant · ${fmtDate(rr.jds[0])}`,cx,1205)}
   g.fillStyle='#8a93c8';g.font='600 26px "Plus Jakarta Sans",system-ui,sans-serif';g.fillText('NASA Space Apps Challenge · planet positions from NASA JPL',cx,H-60);return c}
 
+/* ===== 13.1. SOURCES, ASSUMPTIONS AND NASA REFERENCE VIEWER ===== */
+const DATA_SOURCES=[
+ ['JPL approximate planet positions, Table 1','https://ssd.jpl.nasa.gov/planets/approx_pos.html','1800-2050 elements, projected into the ecliptic plane. Dates outside this range are extrapolations.'],
+ ['Planet physical parameters','https://ssd.jpl.nasa.gov/planets/phys_par.html','Planet GM and mean radii; rounded constants in the game.'],
+ ['NASA planetary fact sheets','https://nssdc.gsfc.nasa.gov/planetary/factsheet/','Planet and Moon physical scale, gravity and environment.'],
+ ['NASA gravity-assist primer','https://science.nasa.gov/learn/basics-of-space-flight/primer/','Gravity changes direction at equal far-field speed in an unpowered planet frame.'],
+ ['Voyager mission','https://science.nasa.gov/mission/voyager/','Historical launch and encounter chronology.'],
+ ['New Horizons mission','https://science.nasa.gov/mission/new-horizons/','Launch, Jupiter assist and Pluto encounter chronology.'],
+ ['Mariner 10 mission','https://science.nasa.gov/mission/mariner-10/','Historical Venus and Mercury encounters.'],
+ ['Juno mission','https://science.nasa.gov/mission/juno/','Jupiter gravity assist and solar-powered spacecraft context.'],
+ ['Cassini mission','https://science.nasa.gov/mission/cassini/','Saturn mission and gravity-assist context.'],
+ ['LRO mission','https://science.nasa.gov/mission/lro/','Lunar mapping and instrument context.'],
+ ['MRO mission','https://science.nasa.gov/mission/mars-reconnaissance-orbiter/','Mars mapping and communications context.'],
+ ['JPL satellite physical parameters','https://ssd.jpl.nasa.gov/sats/phys_par/','Moon GM and radii used in local tours.'],
+ ['JPL satellite mean elements','https://ssd.jpl.nasa.gov/sats/elem/','Mean orbital radii only; tours use circular orbits with assumed phases, not ephemerides.'],
+ ['Mars telecommunications environment','https://descanso.jpl.nasa.gov/propagation/mars/MarsPub020318.pdf','Simplified EDL uses density 0.020 kg/m3 and scale height 11.1 km.'],
+ ['DONKI and endpoint migration','https://ccmc.gsfc.nasa.gov/tools/DONKI/','Historical flare context only; unavailable snapshot currently has no real records.'],
+ ['NASA 3D Resources','https://github.com/nasa/NASA-3D-Resources','Voyager Probe (A), Juno (A), Cassini Assembly. NASA content and contributor credits remain with the originals.']];
+const GAME_ASSUMPTIONS=[
+ 'Hardware masses, prices, power, science points, launcher capacity curve and DSN cost are game models, not quoted spacecraft specifications.',
+ 'Lambert and Kepler two-body motion with planar patched conics; powered flybys join conics at a common periapsis. No deep-space manoeuvre search or N-body perturbations.',
+ 'Map distances and planet sizes are compressed separately. Chase and flyby views share physical planet/path scale; spacecraft and glows are enlarged.',
+ 'Momentum exchange uses game wet mass and planet mass GM/G, with G = 6.67430e-11 SI (CODATA). Ideal unpowered exchange is separated from engine corrections.',
+ 'Einstein grid is an illustration; clock offset uses weak-field gravitational and velocity terms, not a general-relativity trajectory solver.',
+ 'B-plane aiming is a planar slice. Lateral impulses accumulate; a charged post-flyby correction rejoins the planned leg.',
+ 'Moon tour phases start at zero, orbits are circular, safety altitude is 100 km, and science rewards are game values.',
+ 'Eclipses use cylindrical shadows without penumbra. Radio blackout threshold is 2 degrees; battery endurance is illustrative.',
+ 'EDL is one-dimensional. Drag area/coefficient, entry state, thrust, heat limits and landing thresholds are game models.',
+ 'Aerobraking dip efficacy and heat are game models. Savings compare the same final orbit after capture, never replace capture.',
+ 'Development time, autonomy losses, crew roles, reputation and technology unlocks are game models.',
+ 'Ion TCM: 3000 s Isp, 50 mN and 2500 W game hardware; only cruise correction uses ion. Capture and powered flybys stay chemical.',
+ 'Flare exposure and radiation damage are simulated; a historical flare does not establish particle exposure at a spacecraft.',
+ 'Signal delay is geometric distance / light speed; mission time and animation time are compressed separately.'];
+let referenceModel=null,referenceSaved=null,referencePanels=null;
+const referenceScene=new THREE.Scene();referenceScene.background=new THREE.Color(0x161d48);referenceScene.add(new THREE.AmbientLight(0x9aa0d8,1.2));const referenceLight=new THREE.DirectionalLight(0xffe7c0,2.5);referenceLight.position.set(15,20,10);referenceScene.add(referenceLight);
+function openSources(){const sites=Object.values(LANDING_SITES).flat().map(s=>[s.name,s.url,s.fact]);
+  $('sourcesContent').innerHTML=`<div><h3 class="font-extrabold text-sm">Data and mission context</h3>${[...DATA_SOURCES,...sites].map(([name,url,note])=>`<p class="mt-2"><b>NASA data</b> - <a class="underline" href="${url}" target="_blank" rel="noopener">${name}</a><br>${note}</p>`).join('')}</div><div><h3 class="font-extrabold text-sm">Assumptions</h3>${GAME_ASSUMPTIONS.map(t=>`<p class="mt-2"><b>Game model</b> - ${t}</p>`).join('')}</div>`;
+  $('sourceWeather').textContent=`DONKI snapshot: ${flareSnapshot.events.length} records; ${flareSnapshot.status||'loaded'}. ${flareSnapshot.reason||''}`;$('sourcesModal').hidden=false}
+$('btnSources').onclick=$('reportSources').onclick=openSources;$('sourcesClose').onclick=()=>{$('sourcesModal').hidden=true};$('reloadWeather').onclick=async()=>{await reloadFlareSnapshot();openSources()};
+async function previewReference(name){$('sourceWeather').textContent='Loading NASA '+name+' geometry...';const model=await loadNasaModel(name);if(!model){$('sourceWeather').textContent='Model unavailable; procedural mission spacecraft remain available.';return false}referenceSaved={...des};referencePanels={brief:$('brief').hidden,report:$('report').hidden};$('brief').hidden=$('report').hidden=true;referenceModel=model.clone(true);referenceScene.add(referenceModel);$('sourcesModal').hidden=true;$('modelReference').hidden=false;$('modelReferenceTitle').textContent='NASA '+name;shot({tx:0,ty:0,tz:0,d:22,yaw:.5,pitch:.3});Object.assign(rig,des);return true}
+document.querySelectorAll('[data-model]').forEach(b=>b.onclick=()=>previewReference(b.dataset.model));$('modelReferenceClose').onclick=()=>{if(referenceModel)referenceScene.remove(referenceModel);referenceModel=null;shot(referenceSaved);$('brief').hidden=referencePanels.brief;$('report').hidden=referencePanels.report;$('modelReference').hidden=true;openSources()};
 /* =====================================================================
    14. FLIGHT SCHOOL (guided tutorial)
    ===================================================================== */
@@ -1435,9 +1482,9 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='launch')updateLaunch(dt);
   if(phase==='cruise')updateCruise(dt);
   if(tourState?.flying)updateMoonTour(dt);if(phase==='landing')updateLanding(dt);if(phase==='ops')updateOps(dt);
-  placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(surfaceMode&&phase==='ops'?surfaceScene:cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
+  if(referenceModel)referenceModel.rotation.y+=dt*.12;placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(referenceModel?referenceScene:surfaceMode&&phase==='ops'?surfaceScene:cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={nasaModel:name=>loadNasaModel(name),nasaStatus:()=>Object.keys(nasaTemplates),flareSnapshot:()=>flareSnapshot,loadFlares:s=>loadFlareSnapshot(s),moonTour:()=>tourState,moonTune:()=>tuneMoonTour(),moonFly:()=>flyMoonTour(),commandDelay:()=>commandDelay(),development:()=>openDevelopment(),crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={sources:()=>openSources(),reference:name=>previewReference(name),nasaModel:name=>loadNasaModel(name),nasaStatus:()=>Object.keys(nasaTemplates),flareSnapshot:()=>flareSnapshot,loadFlares:s=>loadFlareSnapshot(s),moonTour:()=>tourState,moonTune:()=>tuneMoonTour(),moonFly:()=>flyMoonTour(),commandDelay:()=>commandDelay(),development:()=>openDevelopment(),crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
   runTo:(ph)=>new Promise(res=>{assistedReplay=true;const t0=performance.now();const iv=setInterval(()=>{if(tourState&&!tourState.flying)skipMoonTour();if(edl)edl.auto=true;if(aimState)confirmAim();if(!$('aeroModal').hidden)finishAerobraking('keep');const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);assistedReplay=false;res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};

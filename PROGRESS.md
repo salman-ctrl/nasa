@@ -148,3 +148,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Added official r170 GLTF/Draco addons, geometry budget, normalized scale, cache and procedural fallback. Shared model geometry survives scene disposal.
 - Tests: full physics/models and all-mission smoke pass; an additional Voyager-only run asserts the NASA asset actually loads, flies aiming/cinematics and reaches report with zero errors.
 - Availability TODO: New Horizons has STL printing parts but no GLB in the inspected official repository; procedural model retained. Juno/Cassini assets are available for the Sources reference viewer next. Missing asset folders retain gameplay via procedural fallbacks.
+
+## Phase 5.3 - Sources and Assumptions
+- Added brief/report access to linked NASA/JPL mission, planet, moon, atmosphere, geology, flare and model sources. Separate Game model lines cover all hardware/resource values and scientific approximations.
+- Added NASA Voyager/Juno/Cassini reference viewer with original-geometry credits and toon overrides. Source modal stacking and return to brief/report are tested.
+- Route summary warns when dates extrapolate the JPL Table 1 validity range.
+- Tests: full model/physics/all-mission smoke passes; targeted source UI plus actual Juno/Cassini decode/view/close and Voyager flight pass with zero errors. Next: live validation table.

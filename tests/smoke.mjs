@@ -10,6 +10,8 @@ try{
 const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];
 page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.waitForFunction(()=>window.__game,{timeout:60000});
+await page.evaluate(()=>window.__game.sources());assert.ok(await page.locator('#sourcesContent').getByText('Game model',{exact:true}).count()>5);await page.locator('#sourcesClose').click();
+if(process.env.TEST_REFERENCE){for(const name of ['juno','cassini']){assert.equal(await page.evaluate(name=>window.__game.reference(name),name),true);assert.equal(await page.locator('#modelReference').isVisible(),true);await page.locator('#modelReferenceClose').click();await page.locator('#sourcesClose').click()}}
 await page.evaluate(()=>{const g=window.__game;g.crew(4);g.start('moon');g.role(2)});
 assert.equal(await page.locator('[data-k="launcher"]').first().isVisible(),false);
 await page.evaluate(()=>window.__game.launch());assert.equal(await page.evaluate(()=>window.__game.phase),'design');

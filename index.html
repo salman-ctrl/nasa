@@ -69,10 +69,25 @@ tailwind.config={theme:{extend:{
   @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
   .star{display:inline-block;animation:pop .45s both}
   [hidden]{display:none!important}
+  #c{touch-action:none}
+  #mobileTools{display:none}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e2772e;outline-offset:3px}
+  @media(max-width:700px){
+    header{padding:8px!important}#log{display:none}#steps{order:3;width:100%;font-size:10px}#kpis .kpi{min-width:112px;padding:5px 8px}#kpis .v{font-size:17px}
+    #panel,#review,#rpanel,#rsum{left:8px!important;right:8px!important;top:auto!important;bottom:56px!important;width:auto!important;height:42vh;max-height:42vh;overflow-y:auto}
+    body[data-sheet="parts"] #review,body[data-sheet="parts"] #rsum,body[data-sheet="review"] #panel,body[data-sheet="review"] #rpanel,body[data-sheet="crew"] #panel,body[data-sheet="crew"] #rpanel,body[data-sheet="crew"] #review,body[data-sheet="crew"] #rsum{display:none!important}
+    #teamBar{display:none!important}body[data-sheet="crew"] #teamBar:not([hidden]){display:flex!important;left:8px;right:8px;bottom:56px;transform:none;max-height:42vh;overflow-y:auto}
+    #mobileTools:not([hidden]){display:flex;position:fixed;bottom:8px;left:8px;right:8px;justify-content:center;gap:6px;z-index:25;padding:5px}
+    #hud{left:8px;bottom:8px;width:calc(100% - 16px);max-height:39vh;overflow:auto}#flyCinema{left:8px;right:8px;top:132px;width:auto;max-height:32vh;overflow:auto}
+    #hint{display:none}#banner{font-size:24px;top:35%}#coach{max-width:calc(100vw - 20px)}#environmentHud{top:102px;font-size:10px}
+    .modal{padding:8px}.modal>.glass{padding:14px}.btn{min-height:36px;padding:7px 10px}#modelReference{top:auto;bottom:8px;left:8px;width:auto;right:8px}
+  }
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
-<body class="font-ui text-ink bg-[#cfdcf2] overflow-hidden text-[13px]">
+<body class="font-ui text-ink bg-[#cfdcf2] overflow-hidden text-[13px]" data-sheet="parts">
+<div id="loading" class="modal" style="z-index:90;background:#141b3a;color:#fbf6ec"><section class="glass p-5 w-full max-w-[420px] text-ink"><b>GEODESIC</b><p id="loadingText" role="status" class="mt-2">Loading flight systems...</p><progress id="loadingProgress" max="100" value="10" class="w-full mt-3"></progress></section></div>
 
 <canvas id="c" class="fixed inset-0 w-full h-full block cursor-grab" aria-label="3D view. Drag to rotate, scroll to zoom."></canvas>
 <div id="fade" class="fixed inset-0 bg-night opacity-0 pointer-events-none transition-opacity duration-700 z-40"></div>
@@ -152,6 +167,7 @@ tailwind.config={theme:{extend:{
 <div id="sourcesModal" class="modal" hidden><section class="glass max-w-[1000px] w-full max-h-full overflow-y-auto p-5"><div class="flex justify-between gap-2"><h2 class="font-extrabold text-xl">Sources &amp; assumptions</h2><button id="sourcesClose" class="btn">Close</button></div><div id="sourcesContent" class="grid sm:grid-cols-2 gap-4 text-xs mt-4"></div><h3 class="font-extrabold mt-4">NASA spacecraft reference viewer</h3><div id="modelButtons" class="flex gap-2 mt-2"><button class="btn" data-model="voyager">Voyager</button><button class="btn" data-model="juno">Juno</button><button class="btn" data-model="cassini">Cassini</button></div><p id="sourceWeather" class="text-xs mt-3"></p><button id="reloadWeather" class="btn text-xs mt-2">Reload local DONKI snapshot</button><div id="modelChecks" class="mt-4 overflow-x-auto"></div></section></div>
 <section id="modelReference" class="glass fixed right-3 top-[148px] w-[300px] p-4 z-30" hidden><h2 id="modelReferenceTitle" class="font-extrabold text-lg"></h2><p class="text-xs mt-2">NASA 3D Resources geometry. Toon materials replace the original finish. Drag to rotate; scroll to zoom.</p><button id="modelReferenceClose" class="btn mt-3">Back to Sources</button></section>
 <!-- tutorial coach -->
+<nav id="mobileTools" class="glass" aria-label="Mission panels" hidden><button class="btn text-xs" data-sheet="parts">Parts / plan</button><button class="btn text-xs" data-sheet="review">Review / summary</button><button class="btn text-xs" data-sheet="crew">Crew</button></nav>
 <div id="coach" class="glass fixed z-50 w-[300px] p-3.5 flex flex-col gap-2" hidden>
   <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold tracking-[.12em] uppercase text-flame">Flight school</span><span id="coachN" class="text-[11px] font-bold text-muted"></span></div>
   <p id="coachT" class="leading-relaxed text-[13px]"></p>
@@ -220,6 +236,9 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 
 const $=id=>document.getElementById(id);
+function loadingStep(text,value){$('loadingText').textContent=text;$('loadingProgress').value=value}
+loadingStep('Preparing renderer and illustrated worlds...',30);
+document.querySelectorAll('[data-sheet]').forEach(b=>{if(b.tagName==='BUTTON')b.onclick=()=>document.body.dataset.sheet=b.dataset.sheet});
 const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,f)=>a+(b-a)*f;
 const sstep=(a,b,x)=>{x=clamp((x-a)/(b-a),0,1);return x*x*(3-2*x)};
 const fmt=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -610,10 +629,10 @@ const disposeTree=o=>o.traverse(n=>{if(n.geometry&&!n.geometry.userData.nasaShar
 const nasaTemplates={},nasaLoads={};
 const nasaDraco=new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/gltf/');
 function loadNasaModel(name){if(!['voyager','juno','cassini'].includes(name))return Promise.resolve(null);if(nasaLoads[name])return nasaLoads[name];
-  nasaLoads[name]=(async()=>{try{const gltf=await new GLTFLoader().setDRACOLoader(nasaDraco).loadAsync('assets/models/'+name+'.glb'),model=gltf.scene,box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());let vertices=0;model.traverse(o=>{if(o.isMesh)vertices+=o.geometry.attributes.position.count});if(vertices>450000){disposeTree(model);return null}
+  nasaLoads[name]=(async()=>{loadingStep('Loading NASA '+name+' model...',20);$('loading').hidden=false;try{const gltf=await new GLTFLoader().setDRACOLoader(nasaDraco).loadAsync('assets/models/'+name+'.glb',event=>{if(event.total)loadingStep('Downloading NASA '+name+'...',20+event.loaded/event.total*65)}),model=gltf.scene,box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());let vertices=0;model.traverse(o=>{if(o.isMesh)vertices+=o.geometry.attributes.position.count});if(vertices>450000){disposeTree(model);return null}
     const mat=toonMat(0xded4bd);mat.userData.nasaShared=true;model.traverse(o=>{if(o.isMesh){o.geometry.userData.nasaShared=true;const original=Array.isArray(o.material)?o.material:[o.material];original.forEach(m=>m.dispose());o.material=mat;o.castShadow=false;o.receiveShadow=false}});
     const wrapper=new THREE.Group(),normalised=new THREE.Group();model.position.sub(centre);normalised.add(model);normalised.scale.setScalar(10/Math.max(size.x,size.y,size.z));wrapper.add(normalised);wrapper.userData={span:10,panels:[],nasa:true};nasaTemplates[name]=wrapper;return wrapper
-  }catch{return null}})();return nasaLoads[name]}
+  }catch{return null}finally{$('loading').hidden=true}})();return nasaLoads[name]}
 function buildCraft(c){
   if(legend?.id==='voyager2'&&nasaTemplates.voyager){const model=nasaTemplates.voyager.clone(true);model.userData={span:10,panels:[],nasa:true};return model}
   const g=new THREE.Group();g.userData.panels=[];const B=BUS[c.bus],s=B.size,top=s*.45;
@@ -805,7 +824,7 @@ const rig={tx:0,ty:5.5,tz:0,d:16,yaw:.75,pitch:.2},des=Object.assign({},rig);let
 function fit(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}fit();addEventListener('resize',fit);
 function placeCam(dt){if(camera.near!==.1){camera.near=.1;camera.far=8000;camera.updateProjectionMatrix()}const k=1-Math.exp(-dt*3.2);for(const p in rig)rig[p]+=(des[p]-rig[p])*k;
   const cp=Math.cos(rig.pitch);camera.position.set(rig.tx+rig.d*Math.sin(rig.yaw)*cp,rig.ty+rig.d*Math.sin(rig.pitch),rig.tz+rig.d*Math.cos(rig.yaw)*cp);
-  if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake}camera.lookAt(rig.tx,rig.ty,rig.tz)}
+  if(shake>0&&!matchMedia('(prefers-reduced-motion: reduce)').matches){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake}camera.lookAt(rig.tx,rig.ty,rig.tz)}
 const shot=o=>Object.assign(des,o);
 let drag=null,autoSpin=true;
 canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);autoSpin=false});
@@ -839,7 +858,7 @@ function renderTeam(){const el=$('teamBar');el.hidden=!!legend||!['design','rout
   el.querySelectorAll('[data-rolepick]').forEach(b=>b.onclick=()=>{team.role=+b.dataset.rolepick;if(phase==='design')renderPanel();else renderRoutePanel();renderTeam()});$('roleSign').onclick=()=>{if(team.players===1)team.signs.fill(true);else team.signs[team.role]=true;renderTeam()}}
 let phase='brief',cfg=null,res=null,mods={},launchRes=null,active=earth,legend=null,histRR=null;
 const say=m=>{$('log').textContent=m};
-function setPhase(p){phase=p;renderTeam();const map={brief:0,design:1,development:2,route:3,launch:4,cruise:5,landing:6,ops:7,report:8};const i=map[p];
+function setPhase(p){phase=p;$('mobileTools').hidden=!['design','route'].includes(p);renderTeam();const map={brief:0,design:1,development:2,route:3,launch:4,cruise:5,landing:6,ops:7,report:8};const i=map[p];
   $('steps').innerHTML=STEPS.map((s,k)=>{if(legend&&(k===1||k===2||k===6||k===7))return'';return`<li class="step ${k===i?'on':k<i?'done':''}">${k<i?'✓ ':''}${s}</li>`}).join('');
   $('panel').hidden=$('review').hidden=p!=='design';$('rpanel').hidden=$('rsum').hidden=p!=='route';$('kpis').hidden=!(p==='design'||(p==='route'&&!legend));
   $('hud').hidden=!(p==='cruise'||p==='ops');$('hint').hidden=!(p==='design'||p==='brief'||p==='cruise'||p==='route');tutShow()}
@@ -1491,7 +1510,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='cruise')updateCruise(dt);
   if(tourState?.flying)updateMoonTour(dt);if(phase==='landing')updateLanding(dt);if(phase==='ops')updateOps(dt);
   if(referenceModel)referenceModel.rotation.y+=dt*.12;placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(referenceModel?referenceScene:surfaceMode&&phase==='ops'?surfaceScene:cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
-requestAnimationFrame(frame);
+loadingStep('Ready for mission planning',100);requestAnimationFrame(()=>{$('loading').hidden=true;requestAnimationFrame(frame)});
 window.__game={modelChecks:()=>runModelChecks(),sources:()=>openSources(),reference:name=>previewReference(name),nasaModel:name=>loadNasaModel(name),nasaStatus:()=>Object.keys(nasaTemplates),flareSnapshot:()=>flareSnapshot,loadFlares:s=>loadFlareSnapshot(s),moonTour:()=>tourState,moonTune:()=>tuneMoonTour(),moonFly:()=>flyMoonTour(),commandDelay:()=>commandDelay(),development:()=>openDevelopment(),crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},

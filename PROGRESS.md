@@ -160,3 +160,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Optional four-seed optimizer check runs the same safe Jupiter-capture acceptance target as Node, with visible per-seed results.
 - Tests: all six live browser rows pass; models, EDL, historical regressions and all-mission smoke pass with zero errors.
 - Phase 5 complete using the authorized DONKI/New Horizons availability fallbacks above. Next: phone layout, shortcuts, loading and README.
+
+## Phase 6 - responsive controls and loading
+- At 390 px, Parts/Plan, Review/Summary and Crew become selectable bottom sheets. Touch aiming/camera gestures remain available and panels no longer overlap.
+- Added visible keyboard focus, responsive flyby/HUD panels, initial flight-systems loading screen and model download progress. Reduced-motion CSS disables animations/transitions; flyby duration is shortened and camera shake suppressed.
+- Tests: full models/physics/all-mission smoke passes; dedicated 390x844 browser run switches all three sheets, verifies no horizontal overflow, captures a screenshot and flies Voyager 2 with zero errors.
+- Next: keyboard help, README, final audit and final night-build commit.

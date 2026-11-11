@@ -142,3 +142,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Saved query URLs, UTC fetch timestamp, failure reason and an empty events list to data/donki-flares.json. No flare records were fabricated.
 - Added a validating snapshot loader and reload function. Available records label event class/date as historical context; local radiation and damage remain simulated. Empty/unavailable data uses a clearly labelled simulated particle storm.
 - Tests: models, full regressions and all-mission smoke pass with zero errors, including career UI lock. TODO: fetch a real curated DONKI snapshot when the service is reachable. Next: NASA models.
+
+## Phase 5.2 - official NASA spacecraft assets
+- Downloaded Voyager, Juno and Cassini GLBs from nasa/NASA-3D-Resources with provenance in data/nasa-models.json. Voyager 2 Legendary mode now loads the real asset and overrides materials with the existing toon gradient.
+- Added official r170 GLTF/Draco addons, geometry budget, normalized scale, cache and procedural fallback. Shared model geometry survives scene disposal.
+- Tests: full physics/models and all-mission smoke pass; an additional Voyager-only run asserts the NASA asset actually loads, flies aiming/cinematics and reaches report with zero errors.
+- Availability TODO: New Horizons has STL printing parts but no GLB in the inspected official repository; procedural model retained. Juno/Cassini assets are available for the Sources reference viewer next. Missing asset folders retain gameplay via procedural fallbacks.

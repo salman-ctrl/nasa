@@ -69,7 +69,7 @@ tailwind.config={theme:{extend:{
   .star{display:inline-block;animation:pop .45s both}
   [hidden]{display:none!important}
 </style>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body class="font-ui text-ink bg-[#cfdcf2] overflow-hidden text-[13px]">
 
@@ -211,6 +211,8 @@ tailwind.config={theme:{extend:{
 
 <script type="module">
 import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 
 const $=id=>document.getElementById(id);
 const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,f)=>a+(b-a)*f;
@@ -599,8 +601,16 @@ const STAND=new THREE.Vector3(0,0,0);
 /* =====================================================================
    6. BUILDERS: spacecraft and rockets assembled from the player's choices
    ===================================================================== */
-const disposeTree=o=>o.traverse(n=>{if(n.geometry&&!smoothCache.has(n.geometry))n.geometry.dispose()});
+const disposeTree=o=>o.traverse(n=>{if(n.geometry&&!n.geometry.userData.nasaShared&&!smoothCache.has(n.geometry))n.geometry.dispose()});
+const nasaTemplates={},nasaLoads={};
+const nasaDraco=new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/gltf/');
+function loadNasaModel(name){if(!['voyager','juno','cassini'].includes(name))return Promise.resolve(null);if(nasaLoads[name])return nasaLoads[name];
+  nasaLoads[name]=(async()=>{try{const gltf=await new GLTFLoader().setDRACOLoader(nasaDraco).loadAsync('assets/models/'+name+'.glb'),model=gltf.scene,box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());let vertices=0;model.traverse(o=>{if(o.isMesh)vertices+=o.geometry.attributes.position.count});if(vertices>450000){disposeTree(model);return null}
+    const mat=toonMat(0xded4bd);mat.userData.nasaShared=true;model.traverse(o=>{if(o.isMesh){o.geometry.userData.nasaShared=true;const original=Array.isArray(o.material)?o.material:[o.material];original.forEach(m=>m.dispose());o.material=mat;o.castShadow=false;o.receiveShadow=false}});
+    const wrapper=new THREE.Group(),normalised=new THREE.Group();model.position.sub(centre);normalised.add(model);normalised.scale.setScalar(10/Math.max(size.x,size.y,size.z));wrapper.add(normalised);wrapper.userData={span:10,panels:[],nasa:true};nasaTemplates[name]=wrapper;return wrapper
+  }catch{return null}})();return nasaLoads[name]}
 function buildCraft(c){
+  if(legend?.id==='voyager2'&&nasaTemplates.voyager){const model=nasaTemplates.voyager.clone(true);model.userData={span:10,panels:[],nasa:true};return model}
   const g=new THREE.Group();g.userData.panels=[];const B=BUS[c.bus],s=B.size,top=s*.45;
   g.add(mk(new THREE.BoxGeometry(s,s*.9,s),0xe2b23c,{map:foilTex,t:.03}));
   g.add(at(mk(new THREE.BoxGeometry(s*1.04,.08,s*1.04),0xd9d4c7,{t:.02}),0,top,0));g.add(at(mk(new THREE.BoxGeometry(s*1.04,.08,s*1.04),0xd9d4c7,{t:.02}),0,-top,0));
@@ -724,7 +734,7 @@ function planetMesh(id){const p=PH[id];const m=mk(new THREE.SphereGeometry(p.vR,
 const visR=r=>38*Math.pow(r/AU,.62);                                // compressed so Neptune and Mercury fit one screen
 const toVis=(p,y=0)=>{const r=Math.hypot(p[0],p[1]),s=r>0?visR(r)/r:0;return new THREE.Vector3(p[0]*s,y,-p[1]*s)};
 let SYS=null;
-function clearDyn(){dyn.traverse(n=>{if(n.geometry&&!smoothCache.has(n.geometry))n.geometry.dispose()});dyn.clear();grid=null}
+function clearDyn(){dyn.traverse(n=>{if(n.geometry&&!n.geometry.userData.nasaShared&&!smoothCache.has(n.geometry))n.geometry.dispose()});dyn.clear();grid=null}
 function setWells(list){const W=gridMat.uniforms.w.value;for(let i=0;i<NW;i++){const e=list[i];if(e)W[i].set(e[0],e[1],e[2],e[3]);else W[i].set(0,0,0,1)}}
 
 /* ---- heliocentric system ---- */
@@ -923,7 +933,7 @@ function goBrief(){renderCareer();legend=null;setPhase('brief');$('brief').hidde
    10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune
    ===================================================================== */
 const FLY_OPTS=['venus','earth','mars','jupiter','saturn','uranus'];
-function startLegend(id){legend=LEGENDS[id];const L=legend;const jds=L.dates.map(d=>jdOf(...d));
+function startLegend(id){legend=LEGENDS[id];if(id==='voyager2')loadNasaModel('voyager').then(model=>{if(!model||legend?.id!=='voyager2')return;if(phase==='route'){rebuildModels();setupHelio(cfg.rr,cfg.rr.jds[0])}else if(SYS?.craft&&phase==='cruise'){const previous=SYS.craft.children[0];SYS.craft.remove(previous);disposeTree(previous);const craft=buildCraft(cfg);craft.scale.setScalar(.45);SYS.craft.add(craft)}});const L=legend;const jds=L.dates.map(d=>jdOf(...d));
   histRR=evalRoute(L.seq,jds[0],jds.slice(1).map((x,i)=>x-jds[i]),false);
   cfg={mission:'legend',launcher:L.launcher,bus:'M',power:'rtg2',comm:'hga3',passes:1,inst:['cam','spec','mag'],vault:false,margin:10,
     route:{seq:L.seq.slice(),jd0:jds[0],tofs:jds.slice(1).map((x,i)=>x-jds[i])},rr:null};evalCfgRoute();
@@ -1147,7 +1157,7 @@ function updateCinematic(dt){const a=cinematic;if(!a)return;a.t+=dt;
   const centre=cfg.rr.P[a.f.idx].r;updateEnvironment([centre[0]+q[0],centre[1]+q[1]],a.f.jd,dt,false);if(a.t>=duration)endCinematic()}
 function endCinematic(){if(!cinematic)return;const correction=cinematic.f.aimSolution?.correction||0;shot(cinematic.saved);Object.assign(rig,des);cinematic=null;$('flyCinema').hidden=true;if(correction>.01)triggerBurn(correction);
   const geometries=new Set(),materials=new Set();flyGroup.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material&&!Array.from(outlineMats.values()).includes(o.material))materials.add(o.material)});
-  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());flyGroup.clear()}
+  geometries.forEach(g=>{if(!g.userData.nasaShared)g.dispose()});materials.forEach(m=>{if(!m.userData.nasaShared)m.dispose()});flyGroup.clear()}
 $('skipFly').onclick=endCinematic;
 
 /* ===== 12.2. B-PLANE AIMING (PLANAR SLICE) ===== */
@@ -1427,7 +1437,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(tourState?.flying)updateMoonTour(dt);if(phase==='landing')updateLanding(dt);if(phase==='ops')updateOps(dt);
   placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(surfaceMode&&phase==='ops'?surfaceScene:cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={flareSnapshot:()=>flareSnapshot,loadFlares:s=>loadFlareSnapshot(s),moonTour:()=>tourState,moonTune:()=>tuneMoonTour(),moonFly:()=>flyMoonTour(),commandDelay:()=>commandDelay(),development:()=>openDevelopment(),crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={nasaModel:name=>loadNasaModel(name),nasaStatus:()=>Object.keys(nasaTemplates),flareSnapshot:()=>flareSnapshot,loadFlares:s=>loadFlareSnapshot(s),moonTour:()=>tourState,moonTune:()=>tuneMoonTour(),moonFly:()=>flyMoonTour(),commandDelay:()=>commandDelay(),development:()=>openDevelopment(),crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
   runTo:(ph)=>new Promise(res=>{assistedReplay=true;const t0=performance.now();const iv=setInterval(()=>{if(tourState&&!tourState.flying)skipMoonTour();if(edl)edl.auto=true;if(aimState)confirmAim();if(!$('aeroModal').hidden)finishAerobraking('keep');const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);assistedReplay=false;res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};

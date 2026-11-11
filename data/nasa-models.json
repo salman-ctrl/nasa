@@ -1,0 +1,9 @@
+{
+  "source": "https://github.com/nasa/NASA-3D-Resources",
+  "models": {
+    "voyager": "3D Models/Voyager Probe (A)/Voyager Probe (A).glb",
+    "juno": "3D Models/Juno (A)/Juno (A).glb",
+    "cassini": "3D Models/Cassini Assembly/Cassini Assembly.glb"
+  },
+  "newHorizons": "No official GLB in inspected repository tree; STL printing parts only. Procedural fallback."
+}

@@ -166,3 +166,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Added visible keyboard focus, responsive flyby/HUD panels, initial flight-systems loading screen and model download progress. Reduced-motion CSS disables animations/transitions; flyby duration is shortened and camera shake suppressed.
 - Tests: full models/physics/all-mission smoke passes; dedicated 390x844 browser run switches all three sheets, verifies no horizontal overflow, captures a screenshot and flies Voyager 2 with zero errors.
 - Next: keyboard help, README, final audit and final night-build commit.
+
+## Phase 6 - keyboard controls and optimizer audit
+- Added ? help with focus return, Escape, C, N/E, Space pause, S skip, M sound and T auto-tune. Added two-finger touch zoom alongside one-finger rotation.
+- Audit fixed optimizer candidate ranking: it now scores rounded playable dates and prefers safe candidates. Jupiter smoke uses a repeatable seed and rejects unsafe routes.
+- Tests: all physics/EDL/engineering checks and full mission smoke pass. Combined mobile/reference suite passes, including actual career award persistence across reload, next-mission unlock, NASA assets, moon tour, aiming and Skip; zero browser errors.
+- Next: README, final source-map refresh and final verification under a GitHub Pages-style subpath.

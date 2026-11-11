@@ -101,6 +101,7 @@ tailwind.config={theme:{extend:{
     <ol id="steps" class="glass px-1.5 py-1 flex gap-0.5 text-[11px] font-bold overflow-x-auto"></ol>
     <div class="ml-auto flex items-center gap-2 pointer-events-auto">
       <div id="log" class="px-3 py-1.5 rounded-full bg-ink text-paper text-xs font-semibold max-w-[46ch] truncate">Choose a mission to begin</div>
+      <button id="btnHelp" class="glass w-9 h-9 grid place-items-center text-base" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
       <button id="btnSound" class="glass w-9 h-9 grid place-items-center text-base" title="Sound on/off" aria-label="Toggle sound">🔊</button>
     </div>
   </div>
@@ -166,6 +167,7 @@ tailwind.config={theme:{extend:{
 <div id="tourModal" class="modal" hidden><section class="glass max-w-[700px] w-full p-4 max-h-full overflow-y-auto"><h2 class="font-extrabold text-lg">Optional moon tour</h2><p class="text-xs text-muted">JPL GM, radii and mean orbital radii; circular coplanar paths with assumed phase zero. These are not moon ephemerides.</p><div id="tourChoices" class="flex gap-1 flex-wrap mt-2"></div><div id="tourLegs" class="mt-2"></div><canvas id="tourCanvas" width="800" height="350" class="w-full mt-2"></canvas><p id="tourReadout" class="text-xs"></p><div class="flex gap-2 mt-3"><button id="tourSkip" class="btn">Skip tour</button><button id="tourTune" class="btn">Auto-tune</button><button id="tourGo" class="btn primary">Fly tour</button></div><p class="text-xs mt-2"><a href="https://ssd.jpl.nasa.gov/sats/phys_par/" target="_blank" rel="noopener" class="underline">JPL physical data</a> / <a href="https://ssd.jpl.nasa.gov/sats/elem/" target="_blank" rel="noopener" class="underline">orbital radii</a></p></section></div>
 <div id="sourcesModal" class="modal" hidden><section class="glass max-w-[1000px] w-full max-h-full overflow-y-auto p-5"><div class="flex justify-between gap-2"><h2 class="font-extrabold text-xl">Sources &amp; assumptions</h2><button id="sourcesClose" class="btn">Close</button></div><div id="sourcesContent" class="grid sm:grid-cols-2 gap-4 text-xs mt-4"></div><h3 class="font-extrabold mt-4">NASA spacecraft reference viewer</h3><div id="modelButtons" class="flex gap-2 mt-2"><button class="btn" data-model="voyager">Voyager</button><button class="btn" data-model="juno">Juno</button><button class="btn" data-model="cassini">Cassini</button></div><p id="sourceWeather" class="text-xs mt-3"></p><button id="reloadWeather" class="btn text-xs mt-2">Reload local DONKI snapshot</button><div id="modelChecks" class="mt-4 overflow-x-auto"></div></section></div>
 <section id="modelReference" class="glass fixed right-3 top-[148px] w-[300px] p-4 z-30" hidden><h2 id="modelReferenceTitle" class="font-extrabold text-lg"></h2><p class="text-xs mt-2">NASA 3D Resources geometry. Toon materials replace the original finish. Drag to rotate; scroll to zoom.</p><button id="modelReferenceClose" class="btn mt-3">Back to Sources</button></section>
+<div id="shortcutModal" class="modal" style="z-index:80" hidden><section class="glass max-w-[450px] w-full p-5"><h2 class="font-extrabold text-lg">Flight controls</h2><dl class="grid grid-cols-2 gap-2 text-sm mt-3"><dt>C</dt><dd>Map / Chase</dd><dt>N / E</dt><dd>Newton / Einstein</dd><dt>Space</dt><dd>Pause / resume cruise</dd><dt>S</dt><dd>Skip flyby cinematic</dd><dt>M</dt><dd>Sound on / off</dd><dt>T</dt><dd>Auto-tune route</dd><dt>?</dt><dd>Open this guide</dd><dt>Escape</dt><dd>Close help / Sources</dd><dt>Drag / pinch controls</dt><dd>Rotate view / use zoom slider or scroll</dd></dl><p class="text-xs text-muted mt-3">Phone panels use the tabs at the bottom. Aim by dragging or using the range control.</p><button id="shortcutClose" class="btn dark mt-4">Back to flight</button></section></div>
 <!-- tutorial coach -->
 <nav id="mobileTools" class="glass" aria-label="Mission panels" hidden><button class="btn text-xs" data-sheet="parts">Parts / plan</button><button class="btn text-xs" data-sheet="review">Review / summary</button><button class="btn text-xs" data-sheet="crew">Crew</button></nav>
 <div id="coach" class="glass fixed z-50 w-[300px] p-3.5 flex flex-col gap-2" hidden>
@@ -341,7 +343,7 @@ function tuneDE(seq,capture,opt={}){const lo=opt.jdMin,hi=opt.jdMax,timeW=opt.ti
 function polish(seq,capture,c0,opt){const timeW=opt.timeW??120,rg=[[opt.jdMin,opt.jdMax],...seq.slice(0,-1).map((a,i)=>tofRange(a,seq[i+1]))],n=rg.length;
   const ev=c=>routeScore(evalRoute(seq,c[0],c.slice(1),capture),timeW);let c=c0.slice(),cj=ev(c),st=rg.map(r=>(r[1]-r[0])*.02);
   for(let it=0;it<300&&st[0]>.2;it++){let imp=false;for(let k=0;k<n;k++)for(const s of[-1,1]){const d=c.slice();d[k]=clamp(d[k]+s*st[k],rg[k][0],rg[k][1]);const j=ev(d);if(j<cj){cj=j;c=d;imp=true}}if(!imp)st=st.map(x=>x*.5)}
-  return{jd0:Math.round(c[0]),tofs:c.slice(1).map(Math.round),J:cj}}
+  const jd0=Math.round(c[0]),tofs=c.slice(1).map(Math.round);return{jd0,tofs,J:routeScore(evalRoute(seq,jd0,tofs,capture),timeW)}}
 const closeTxt=f=>{const p=PH[f.id],alt=(f.rp-p.R)/1e3;return f.rp<p.R?`${fmt(Math.max(0,f.rp)/1e3)} km from ${p.name}'s centre, which is inside the planet`:`only ${fmt(alt)} km above ${p.name}'s surface, below the safe minimum of ${p.giant?'10% of its radius':'300 km'} (atmosphere)`};
 const propFor=(dry,dv)=>dry*(Math.exp(dv/(ISP*G0))-1);
 
@@ -830,6 +832,10 @@ let drag=null,autoSpin=true;
 canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);autoSpin=false});
 canvas.addEventListener('pointermove',e=>{if(!drag)return;des.yaw-=(e.clientX-drag.x)*.006;des.pitch=clamp(des.pitch+(e.clientY-drag.y)*.004,-.15,1.5);drag={x:e.clientX,y:e.clientY}});
 const endDrag=()=>{drag=null};canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
+const touchPoints=new Map();let pinchStart=null;
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;touchPoints.set(e.pointerId,[e.clientX,e.clientY]);if(touchPoints.size===2){const [a,b]=touchPoints.values();pinchStart={distance:Math.hypot(a[0]-b[0],a[1]-b[1]),d:des.d};drag=null}});
+canvas.addEventListener('pointermove',e=>{if(!touchPoints.has(e.pointerId))return;touchPoints.set(e.pointerId,[e.clientX,e.clientY]);if(touchPoints.size===2&&pinchStart){const [a,b]=touchPoints.values(),distance=Math.hypot(a[0]-b[0],a[1]-b[1]);if(distance>1)des.d=clamp(pinchStart.d*pinchStart.distance/distance,3,2600);drag=null}});
+const endTouch=e=>{touchPoints.delete(e.pointerId);pinchStart=null;if(touchPoints.size===1){const p=touchPoints.values().next().value;drag={x:p[0],y:p[1]}}};canvas.addEventListener('pointerup',endTouch);canvas.addEventListener('pointercancel',endTouch);
 canvas.addEventListener('wheel',e=>{e.preventDefault();des.d=clamp(des.d*Math.exp(clamp(e.deltaY,-120,120)*.0012),3,2600)},{passive:false});
 
 /* =====================================================================
@@ -1045,10 +1051,10 @@ function renderSummary(){const rr=cfg.rr,el=$('rsum');
   h+=`<div class="flex flex-col gap-1.5 pt-2 border-t border-line">${C.join('')}</div>`+navButtons(true);el.innerHTML=h;wireNav();if(tutOn)tutShow()}
 function navButtons(ok){return`<button id="btnLaunch2" class="btn primary w-full text-[15px] mt-1" ${ok?'':'disabled'}>Launch mission ▲</button><button id="btnBack2" class="btn w-full text-xs">${legend?'← Back to missions':'← Back to spacecraft design'}</button>`}
 function wireNav(){$('btnLaunch2').onclick=()=>{tutEvent('launch');doLaunch()};$('btnBack2').onclick=()=>{if(legend)goBrief();else{startDesign()}}}
-async function autoTune(){const r=cfg.route,b=jdBounds(),seq=r.seq.slice(),cap=!legend,opt={jdMin:b.lo,jdMax:b.hi};$('btnTune').disabled=true;
-  const cur=[r.jd0,...r.tofs];let best={jd0:r.jd0,tofs:r.tofs.slice(),J:routeScore(evalRoute(seq,r.jd0,r.tofs,cap),120)};const t0=performance.now(),seed=(Math.random()*1e9)|0,RUNS=3;
+async function autoTune(seedOverride){const r=cfg.route,b=jdBounds(),seq=r.seq.slice(),cap=!legend,opt={jdMin:b.lo,jdMax:b.hi};$('btnTune').disabled=true;
+  const cur=[r.jd0,...r.tofs];let best={jd0:r.jd0,tofs:r.tofs.slice(),J:routeScore(evalRoute(seq,r.jd0,r.tofs,cap),120)};const t0=performance.now(),seed=Number.isInteger(seedOverride)?seedOverride:(Math.random()*1e9)|0,RUNS=3;
   for(let k=0;k<RUNS;k++){$('tuneMsg').textContent=`Evolving launch dates and flight times… pass ${k+1} of ${RUNS}`;await new Promise(res=>setTimeout(res,30));
-    const t=tuneDE(seq,cap,Object.assign({},opt,{seed:seed+k*104729,start:k===0?cur:null}));if(t.J<best.J)best=t}
+    const t=tuneDE(seq,cap,Object.assign({},opt,{seed:seed+k*104729,start:k===0?cur:null}));const candidate=evalRoute(seq,t.jd0,t.tofs,cap),previous=evalRoute(seq,best.jd0,best.tofs,cap);if(candidate.ok&&!candidate.crash&&(!previous.ok||previous.crash)||candidate.crash===previous.crash&&t.J<best.J)best=t}
   r.jd0=best.jd0;r.tofs=best.tofs;evalCfgRoute();const rr=cfg.rr;
   const msg=rr.ok?`Best of ~${fmt(RUNS*4200*(seq.length)/3,0)} trajectories in ${fmt((performance.now()-t0)/1000,1)} s: launch ${fmtDate(rr.jds[0])}, total Δv ${fmt(rr.dvEq/1000,2)} km/s${rr.crash?' (still unsafe: try another flyby order)':''}.`:'No safe route with this flyby order. Try a different planet.';
   say(rr.ok&&!rr.crash?`Planets aligned: launch on ${fmtDate(rr.jds[0])}`:'This flyby order does not work well. Try another planet.');
@@ -1496,6 +1502,18 @@ function tutShow(){if(tutEl){tutEl.classList.remove('coach-hi');tutEl=null}const
     co.style.left=clamp(x,10,innerWidth-cw-10)+'px';co.style.top=clamp(y,10,innerHeight-ch-10)+'px'})}
 function tutEvent(name){if(!tutOn||tut<0||tut>=TUT.length)return;const i=TUT.findIndex((x,k)=>k>=tut&&x.wait===name);if(i<0)return;tut=i+1;setTimeout(tutShow,150)}
 $('coachNext').onclick=()=>{tut++;tutShow()};$('coachSkip').onclick=()=>{tutOn=false;tutShow()};
+/* ===== 14.1. KEYBOARD HELP AND ACCESSIBLE CONTROLS ===== */
+let shortcutFocus=null;
+function showShortcuts(){shortcutFocus=document.activeElement;$('shortcutModal').hidden=false;$('shortcutClose').focus()}
+function closeShortcuts(){$('shortcutModal').hidden=true;shortcutFocus?.focus()}
+$('btnHelp').onclick=showShortcuts;$('shortcutClose').onclick=closeShortcuts;
+addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select'))return;const key=e.key.toLowerCase();
+  if(key==='?'){e.preventDefault();showShortcuts()}
+  if(key==='escape'){if(!$('shortcutModal').hidden)closeShortcuts();else if(!$('sourcesModal').hidden)$('sourcesClose').click();else if(referenceModel)$('modelReferenceClose').click()}
+  if(key==='m')$('btnSound').click();if(key==='s'&&cinematic)endCinematic();
+  if(key==='n')setView('newton');if(key==='e')setView('einstein');
+  if(key===' '&&phase==='cruise'&&!cinematic&&$('evt').hidden&&$('aimModal').hidden){e.preventDefault();paused=!paused;say(paused?'Cruise paused':'Cruise resumed')}
+  if(key==='t'&&phase==='route'&&canRole(0)&&!$('btnTune').disabled)autoTune()});
 
 /* =====================================================================
    15. LOOP
@@ -1503,8 +1521,8 @@ $('coachNext').onclick=()=>{tut++;tutShow()};$('coachSkip').onclick=()=>{tutOn=f
 let last=performance.now(),TS=1;
 cfg=defaults('mars');renderCareer();rebuildModels();setPhase('brief');Object.assign(des,{tx:-20,ty:12,tz:-40,d:120,yaw:.75,pitch:.12});Object.assign(rig,des);rig.d=160;setView('einstein');
 function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
-  if(phase==='brief')des.yaw+=dt*.04;
-  if(phase==='design'){if(craftStand)craftStand.rotation.y+=dt*.35;if(autoSpin)des.yaw+=dt*.05}
+  if(phase==='brief'&&!matchMedia('(prefers-reduced-motion: reduce)').matches)des.yaw+=dt*.04;
+  if(phase==='design'){if(craftStand)craftStand.rotation.y+=dt*.35;if(autoSpin&&!matchMedia('(prefers-reduced-motion: reduce)').matches)des.yaw+=dt*.05}
   if(phase==='route'&&SYS){gridMat.uniforms.amp.value+=(1-gridMat.uniforms.amp.value)*Math.min(1,dt*3);if(SYS.craft&&cfg.rr&&cfg.rr.ok){SYS.craft.position.copy(toVis(cfg.rr.P[0].r,.3))}if(SYS.arrS)SYS.arrS.visible=SYS.arrP.visible=false;placeHelio(cfg.rr.ok?cfg.rr.jds[0]:cfg.route.jd0)}
   if(phase==='launch')updateLaunch(dt);
   if(phase==='cruise')updateCruise(dt);
@@ -1513,7 +1531,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
 loadingStep('Ready for mission planning',100);requestAnimationFrame(()=>{$('loading').hidden=true;requestAnimationFrame(frame)});
 window.__game={modelChecks:()=>runModelChecks(),sources:()=>openSources(),reference:name=>previewReference(name),nasaModel:name=>loadNasaModel(name),nasaStatus:()=>Object.keys(nasaTemplates),flareSnapshot:()=>flareSnapshot,loadFlares:s=>loadFlareSnapshot(s),moonTour:()=>tourState,moonTune:()=>tuneMoonTour(),moonFly:()=>flyMoonTour(),commandDelay:()=>commandDelay(),development:()=>openDevelopment(),crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
-  tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
+  tune:seed=>autoTune(seed),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
   runTo:(ph)=>new Promise(res=>{assistedReplay=true;const t0=performance.now();const iv=setInterval(()=>{if(tourState&&!tourState.flying)skipMoonTour();if(edl)edl.auto=true;if(aimState)confirmAim();if(!$('aeroModal').hidden)finishAerobraking('keep');const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);assistedReplay=false;res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};
 </script>
 </body>

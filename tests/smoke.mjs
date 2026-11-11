@@ -10,7 +10,7 @@ try{
 const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];
 page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.waitForFunction(()=>window.__game,{timeout:60000});
-assert.ok(await page.evaluate(()=>window.__game.modelChecks().every(r=>r.pass)));await page.evaluate(()=>window.__game.sources());assert.equal(await page.locator('[data-check="true"]').count(),6);assert.ok(await page.locator('#sourcesContent').getByText('Game model',{exact:true}).count()>5);await page.locator('#sourcesClose').click();
+assert.ok(await page.evaluate(()=>window.__game.modelChecks().every(r=>r.pass)));await page.keyboard.press('?');assert.equal(await page.locator('#shortcutModal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#shortcutModal').isVisible(),false);await page.evaluate(()=>window.__game.sources());assert.equal(await page.locator('[data-check="true"]').count(),6);assert.ok(await page.locator('#sourcesContent').getByText('Game model',{exact:true}).count()>5);await page.locator('#sourcesClose').click();
 if(process.env.TEST_REFERENCE){for(const name of ['juno','cassini']){assert.equal(await page.evaluate(name=>window.__game.reference(name),name),true);assert.equal(await page.locator('#modelReference').isVisible(),true);await page.locator('#modelReferenceClose').click();await page.locator('#sourcesClose').click()}}
 if(process.env.TEST_MOBILE){await page.setViewportSize({width:390,height:844});await page.evaluate(()=>window.__game.start('moon'));assert.equal(await page.locator('#panel').isVisible(),true);assert.equal(await page.locator('#review').isVisible(),false);await page.locator('#mobileTools [data-sheet="review"]').click();assert.equal(await page.locator('#review').isVisible(),true);await page.locator('#mobileTools [data-sheet="crew"]').click();assert.equal(await page.locator('#teamBar').isVisible(),true);await page.locator('#mobileTools [data-sheet="parts"]').click();await page.screenshot({path:fileURLToPath(new URL('./phone.png',import.meta.url))});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.setViewportSize({width:1440,height:900})}
 await page.evaluate(()=>{const g=window.__game;g.crew(4);g.start('moon');g.role(2)});
@@ -19,9 +19,10 @@ await page.evaluate(()=>window.__game.launch());assert.equal(await page.evaluate
 await page.evaluate(()=>window.__game.crew(1));
 await page.locator('#btnBack').click();await page.locator('#playMode').selectOption('career');assert.equal(await page.locator('[data-m="mars"]').isDisabled(),true);await page.locator('#playMode').selectOption('free');
 for(const id of (process.env.SMOKE_MISSIONS?.split(',')||['moon','mars','jupiter','saturn','neptune','voyager2'])){
+if(id==='moon')await page.locator('#playMode').selectOption('career');
 await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:true,missionType:id==='moon'?'lander':id==='mars'?'rover':'orbiter'});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
 if(id==='voyager2')assert.equal(await page.evaluate(async()=>!!await window.__game.nasaModel('voyager')),true);
-if(id==='jupiter')await page.evaluate(()=>window.__game.tune());
+if(id==='jupiter')await page.evaluate(()=>window.__game.tune(7));if(id==='jupiter')assert.equal(await page.evaluate(()=>window.__game.rr().crash),0);
 await page.evaluate(()=>{window.__game.signAll();window.__game.launch()});
 if(id==='saturn'){await page.waitForFunction(()=>{window.__game.choose(0);return window.__game.moonTour()},{timeout:30000});const r=await page.evaluate(()=>{window.__game.moonTune();return window.__game.moonTour().result});assert.ok(r.ok&&!r.crash&&r.bound);await page.evaluate(()=>window.__game.moonFly())}
 if(id==='mars'){await page.waitForFunction(()=>window.__game.phase==='cruise');await page.evaluate(()=>{window.__game.ts(0);window.__game.camera();window.__game.burn(420)});await page.waitForTimeout(150);assert.equal(await page.locator('#burnHud').isVisible(),true);await page.evaluate(()=>{window.__game.camera();window.__game.ts(40)})}
@@ -38,7 +39,7 @@ if(id==='voyager2'){
  await page.evaluate(()=>{window.__game.skipFly();window.__game.ts(40)});
 }
 const result=await page.evaluate(()=>window.__game.runTo('report'));assert.equal(result,'report',id);
-if(id==='moon'||id==='mars')assert.notEqual(await page.locator('#repTitle').textContent(),'Landing impact');console.log(id,await page.locator('#repTitle').textContent());assert.ok(await page.evaluate(()=>window.__game.patch())>1000);
+if(id==='moon'||id==='mars')assert.notEqual(await page.locator('#repTitle').textContent(),'Landing impact');console.log(id,await page.locator('#repTitle').textContent());assert.ok(await page.evaluate(()=>window.__game.patch())>1000);if(id==='moon'){assert.ok(await page.evaluate(()=>JSON.parse(localStorage.getItem('geodesic-career-v1')).best.moon)>=1);await page.reload();await page.waitForFunction(()=>window.__game);await page.locator('#playMode').selectOption('career');assert.equal(await page.locator('[data-m="mars"]').isDisabled(),false);await page.locator('#playMode').selectOption('free');}
 }
 assert.deepEqual(errors,[]);console.log('Smoke passed: all missions and Voyager 2, zero console errors');
 }finally{await browser.close();await new Promise(r=>server.close(r))}

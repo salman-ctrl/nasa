@@ -126,6 +126,7 @@ tailwind.config={theme:{extend:{
 
 <div id="banner" class="fixed left-1/2 top-[28%] -translate-x-1/2 text-center text-white font-extrabold text-3xl sm:text-4xl tracking-tight pointer-events-none z-20 transition-opacity duration-500 opacity-0 px-4"></div>
 <div id="hint" class="fixed left-1/2 bottom-3 -translate-x-1/2 text-[11.5px] font-semibold bg-paper/85 px-3 py-1 rounded-full pointer-events-none z-10 whitespace-nowrap">Drag: rotate · Scroll: zoom</div>
+<div id="burnHud" class="glass fixed left-1/2 top-28 -translate-x-1/2 px-3 py-2 text-flame font-extrabold z-20" hidden></div>
 
 <!-- planet-frame cinematic -->
 <section id="flyCinema" class="glass fixed right-3 top-[148px] p-3 w-[420px] z-20" hidden>
@@ -1001,6 +1002,14 @@ let cr=null,cruiseSpeed=1,paused=false,evtQueue=[],opsT=0,flags={},view='einstei
 const tmpV=new THREE.Vector3();
 
 /* ===== 12.1. PLANET-FRAME FLYBY CINEMATIC ===== */
+const burnPlume=new THREE.Mesh(new THREE.ConeGeometry(.6,4,16,1,true),new THREE.MeshBasicMaterial({color:0xffa24a,transparent:true,opacity:.85,side:THREE.DoubleSide,depthWrite:false}));
+const burnAxis=new THREE.Vector3(0,1,0),burnDirection=new THREE.Vector3();let burnLeft=0,burnTotal=0;
+function triggerBurn(dv,direction){if(!(dv>.01))return;burnTotal=dv;burnLeft=Math.min(10,1+dv/250);if(direction)burnDirection.set(direction[0],0,-direction[1]).normalize();else if(SYS?.craft)SYS.craft.getWorldDirection(burnDirection);else burnDirection.set(0,0,1);$('burnHud').textContent='BURN '+fmt(dv/1000,3)+' km/s';$('burnHud').hidden=false}
+function updateBurn(dt){if(burnLeft<=0){burnPlume.visible=false;$('burnHud').hidden=true;return}burnLeft-=dt;
+  const local=!!cinematic,chase=chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!local,scene=local?flyScene:chase?chaseScene:space,craft=local?cinematic.craft:chase?chaseCraft:SYS?.craft;
+  if(!craft)return;if(burnPlume.parent!==scene)scene.add(burnPlume);burnPlume.visible=true;
+  const scale=chase?.003:local?.15:1;burnPlume.scale.set(scale,scale*(1+Math.min(3,burnTotal/1000)),scale);
+  burnPlume.quaternion.setFromUnitVectors(burnAxis,burnDirection);burnPlume.position.copy(craft.position).addScaledVector(burnDirection,-2*scale*(1+Math.min(3,burnTotal/1000)))}
 let chaseMode=false,chaseCraft=null;
 const chaseScene=new THREE.Scene();chaseScene.background=new THREE.Color(0x161d48);chaseScene.add(new THREE.AmbientLight(0x9aa0d8,.8));
 const chaseSun=new THREE.PointLight(0xfff0d0,3,0,0);chaseScene.add(chaseSun);
@@ -1050,11 +1059,11 @@ function drawFlyVectors(vi,vo,vp){const ctx=$('flyVectors').getContext('2d');ctx
   ctx.fillStyle='#1f6f6a';ctx.fillText('Incoming',25,290);ctx.fillStyle='#e2772e';ctx.fillText('Outgoing',190,290);ctx.fillStyle='#8b6bb3';ctx.fillText('Planet velocity',470,290)}
 function updateCinematic(dt){const a=cinematic;if(!a)return;a.t+=dt;
   const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?2:7,t=lerp(-a.c.ti,a.c.to,clamp(a.t/duration,0,1)),q=conicPoint(a.c,t),ahead=conicPoint(a.c,t+1);
-  a.craft.position.set(q[0]/a.c.p.R,0,-q[1]/a.c.p.R);a.craft.lookAt(ahead[0]/a.c.p.R,0,-ahead[1]/a.c.p.R);a.planet.rotation.y+=dt*.16;
+  a.craft.position.set(q[0]/a.c.p.R,0,-q[1]/a.c.p.R);a.craft.lookAt(ahead[0]/a.c.p.R,0,-ahead[1]/a.c.p.R);a.planet.rotation.y+=dt*.16;if(t>=0&&!a.burned){a.burned=true;triggerBurn(a.f.powered,[ahead[0]-q[0],ahead[1]-q[1]])}
   const range=Math.hypot(q[0],q[1])/a.c.p.R;
   shot({tx:q[0]/a.c.p.R*.4,tz:-q[1]/a.c.p.R*.4,d:Math.max(9,range*2.8)});
   if(a.t>=duration)endCinematic()}
-function endCinematic(){if(!cinematic)return;shot(cinematic.saved);Object.assign(rig,des);cinematic=null;$('flyCinema').hidden=true;
+function endCinematic(){if(!cinematic)return;const correction=cinematic.f.aimSolution?.correction||0;shot(cinematic.saved);Object.assign(rig,des);cinematic=null;$('flyCinema').hidden=true;if(correction>.01)triggerBurn(correction);
   const geometries=new Set(),materials=new Set();flyGroup.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material&&!Array.from(outlineMats.values()).includes(o.material))materials.add(o.material)});
   geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());flyGroup.clear()}
 $('skipFly').onclick=endCinematic;
@@ -1080,7 +1089,7 @@ function drawAim(){const a=aimState;if(!a)return;const c=$('aimCanvas'),g=c.getC
   const pts=[],L=cfg.rr.legs[a.f.idx];for(let i=0;i<=80;i++){const q=propagate(L.r1,sol.v,L.dt*i/80,MU_SUN).r;if(q.every(Number.isFinite))pts.push(toVis(q,.6))}
   aimPreview=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xff6633}));dyn.add(aimPreview)}
 function confirmAim(){if(!aimState)return;const a=aimState,sol=a.solution,cost=a.cost+sol.correction/Math.max(cfg.rr.dvSc,1);
-  mods.dvUse=(mods.dvUse||0)+cost;mods.aims=mods.aims||[];mods.aims.push({id:a.f.id,accuracy:100*Math.max(0,1-Math.abs(a.factor-1)),miss:sol.miss,correction:sol.correction,cost});
+  if(a.cost>0)triggerBurn(a.cost*cfg.rr.dvSc);mods.dvUse=(mods.dvUse||0)+cost;mods.aims=mods.aims||[];mods.aims.push({id:a.f.id,accuracy:100*Math.max(0,1-Math.abs(a.factor-1)),miss:sol.miss,correction:sol.correction,cost});
   a.f.tooClose=sol.tooClose;a.f.aimSolution=sol;aimState=null;$('aimModal').hidden=true;paused=false;
   if(aimPreview){dyn.remove(aimPreview);aimPreview.geometry.dispose();aimPreview.material.dispose();aimPreview=null}}
 $('aimRange').oninput=e=>changeAim(e.target.value);$('aimReset').onclick=()=>changeAim(1);$('aimGo').onclick=confirmAim;
@@ -1145,7 +1154,7 @@ function crashFlyby(f){paused=true;const p=SYS.bodies[f.id].m.position;SYS.craft
   const b=sprite(0xff8a3a,PH[f.id].vR*3,1);b.position.copy(SYS.craft.position);dyn.add(b);SFX.boom();shake=1.2;
   banner(`Impact on ${PH[f.id].name}`,2600);say(`The trajectory needed to pass ${closeTxt(f)}.`);
   shot({tx:p.x,ty:0,tz:p.z,d:PH[f.id].vR*9});cr.crashed=f;setTimeout(()=>{shake=0;showReport('crash')},2800)}
-function arrive(){const lr=launchRes;flags.arr=1;SYS.pulse&&(SYS.pulse.userData.t=0);
+function arrive(){if(!legend)triggerBurn(cr.mode==='moon'?MISSIONS.moon.insertion*1000:cfg.rr.dvCap,cr.mode==='helio'?helioState(cr.jdEnd).v.map(v=>-v):null);const lr=launchRes;flags.arr=1;SYS.pulse&&(SYS.pulse.userData.t=0);
   if(lr.legend){const tgt=cfg.rr.seq[cfg.rr.seq.length-1],p=SYS.bodies[tgt].m.position;shot({tx:p.x,ty:0,tz:p.z,d:PH[tgt].vR*9,pitch:.35});banner(`${PH[tgt].name} encounter!`,2400);SFX.chime();setPhase('ops');opsT=0;return}
   res=compute(cfg,mods);setPhase('ops');opsT=0;const T=cr.mode==='moon'?SYS.moon.m:SYS.bodies[cfg.rr.seq[cfg.rr.seq.length-1]].m,vR=cr.mode==='moon'?2.2:PH[lr.M.target].vR;
   shot({tx:T.position.x,ty:0,tz:T.position.z,d:vR*7,pitch:.32});
@@ -1182,7 +1191,7 @@ const EVENTS=[
 function pickEvents(){if(legend)return[];const pool=EVENTS.slice(),out=[];for(const at of[.3,.62]){const i=(Math.random()*pool.length)|0;out.push(Object.assign({at},pool.splice(i,1)[0]))}return out}
 function openEvent(e){paused=true;SFX.alert();$('evt').hidden=false;$('evtTag').textContent=e.tag;$('evtTitle').textContent=e.title;$('evtBody').textContent=e.body;$('evtResult').hidden=true;$('evtGo').hidden=true;
   $('evtOpts').innerHTML=[e.a,e.b].map((o,i)=>`<button class="opt" data-o="${i}"><b>${o[0]}</b><span>${o[1]}</span></button>`).join('');
-  $('evtOpts').querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const o=b.dataset.o==='0'?e.a:e.b;const msg=o[2]();$('evtOpts').querySelectorAll('button').forEach(x=>{x.disabled=true;x.classList.toggle('sel',x===b)});$('evtResult').textContent=msg;$('evtResult').hidden=false;$('evtGo').hidden=false;say(msg)})}
+  $('evtOpts').querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const o=b.dataset.o==='0'?e.a:e.b;const before=mods.dvUse||0;const msg=o[2]();if((mods.dvUse||0)>before)triggerBurn(((mods.dvUse||0)-before)*(cfg.rr?.dvSc||950));$('evtOpts').querySelectorAll('button').forEach(x=>{x.disabled=true;x.classList.toggle('sel',x===b)});$('evtResult').textContent=msg;$('evtResult').hidden=false;$('evtGo').hidden=false;say(msg)})}
 $('evtGo').onclick=()=>{$('evt').hidden=true;paused=false};
 
 /* =====================================================================
@@ -1286,9 +1295,9 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='launch')updateLaunch(dt);
   if(phase==='cruise')updateCruise(dt);
   if(phase==='ops')updateOps(dt);
-  placeCam(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
+  placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
   runTo:(ph)=>new Promise(res=>{const t0=performance.now();const iv=setInterval(()=>{if(aimState)confirmAim();const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};

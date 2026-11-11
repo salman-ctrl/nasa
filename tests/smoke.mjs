@@ -14,6 +14,7 @@ for(const id of ['moon','mars','jupiter','saturn','neptune','voyager2']){
 await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:true});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
 if(id==='jupiter')await page.evaluate(()=>window.__game.tune());
 await page.evaluate(()=>window.__game.launch());
+if(id==='mars'){await page.waitForFunction(()=>window.__game.phase==='cruise');await page.evaluate(()=>{window.__game.ts(0);window.__game.camera();window.__game.burn(420)});await page.waitForTimeout(150);assert.equal(await page.locator('#burnHud').isVisible(),true);await page.evaluate(()=>{window.__game.camera();window.__game.ts(40)})}
 if(id==='voyager2'){
  await page.waitForFunction(()=>window.__game.aim(),{timeout:30000});
  const before=await page.evaluate(()=>window.__game.aim());assert.ok(before.correction<1e-6);

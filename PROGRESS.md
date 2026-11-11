@@ -75,3 +75,8 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Solar panel normals track the Sun; dish tracks ephemeris Earth. A point light at the physical Sun gives each planet the correct illumination direction.
 - Screenshot review caught an existing report modal remaining over a subsequent Legendary run; startRoute now closes it and smoke asserts that it is hidden during the cinematic.
 - Tests: full physics regressions plus all-mission interactive smoke; map and chase share the same trajectory. Next: visible burns.
+
+## Phase 2.2 - visible burns
+- Shared bounded plume and BURN HUD cover lateral aim changes, post-flyby rejoin, powered periapsis burns, anomaly TCMs and capture. Exhaust extends opposite the acceleration vector; duration grows with delta-v.
+- Tests: physics and all-mission smoke pass; browser explicitly enters chase view and checks the 0.420 km/s burn HUD, with zero errors.
+- Known limit: finite burn duration is visual; trajectory impulses remain instantaneous patched conics. Next: eclipses and conjunction.

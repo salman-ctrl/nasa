@@ -55,3 +55,12 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Preliminary split overlay distinguishes ideal unpowered speed conservation from route powered corrections. Planet momentum uses wet mass and GM/G; fuller source listing follows in Phase 5.
 - Limitation: planar patched conics; craft and glow are enlarged for visibility. Hardware 60 fps is unverified; headless software rendering is a functional check.
 - Next: finalize split diagram, then aiming.
+
+## Phase 1.2 and 1.3 - speed exchange and aiming
+- Split vector view now shows equal-speed unpowered deflection and actual powered Sun-frame sums, with wet-mass momentum exchange and NASA/JPL links.
+- Aiming opens three days before each encounter; touch drag and keyboard range control signed b in a labelled planar B-plane slice.
+- Live Kepler propagation shows the uncorrected departure, next-body miss and Lambert rejoin delta-v. Lateral adjustments accumulate impulse cost; confirmation also deducts rejoin correction using mods.dvUse.
+- Default planned aim costs zero; unsafe periapsis crashes. The cinematic follows the chosen conic, then rejoins the planned transfer using the charged correction. Report records per-flyby accuracy, miss and cost.
+- Tests: historical/conic/aiming regressions pass; browser smoke passes with no errors. Added interactive browser assertions for changed aim and cinematic Skip.
+- Decision: rejoin corrections preserve the remaining planned mission; this is stated in the aim panel. Full 3D B-plane targeting is outside the existing planar model.
+- Next: historical ghost race.

@@ -1,4 +1,5 @@
-﻿import {chromium} from 'playwright';
+﻿import {fileURLToPath} from 'node:url';
+import {chromium} from 'playwright';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -13,6 +14,18 @@ for(const id of ['moon','mars','jupiter','saturn','neptune','voyager2']){
 await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:true});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
 if(id==='jupiter')await page.evaluate(()=>window.__game.tune());
 await page.evaluate(()=>window.__game.launch());
+if(id==='voyager2'){
+ await page.waitForFunction(()=>window.__game.aim(),{timeout:30000});
+ const before=await page.evaluate(()=>window.__game.aim());assert.ok(before.correction<1e-6);
+ const changed=await page.evaluate(()=>{window.__game.aimSet(.95);return window.__game.aim()});
+ assert.ok(changed.correction>1&&changed.miss>before.miss+1000);
+ await page.evaluate(()=>{window.__game.aimSet(1);window.__game.aimConfirm()});
+ await page.waitForFunction(()=>window.__game.flyby(),{timeout:30000});
+ await page.evaluate(()=>window.__game.ts(0));
+ assert.ok((await page.evaluate(()=>window.__game.flyby())).rpR>9);
+ await page.screenshot({path:fileURLToPath(new URL('./flyby.png',import.meta.url))});
+ await page.evaluate(()=>{window.__game.skipFly();window.__game.ts(40)});
+}
 const result=await page.evaluate(()=>window.__game.runTo('report'));assert.equal(result,'report',id);
 console.log(id,await page.locator('#repTitle').textContent());assert.ok(await page.evaluate(()=>window.__game.patch())>1000);
 }

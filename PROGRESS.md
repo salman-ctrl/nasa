@@ -69,3 +69,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Legendary missions show a translucent spacecraft on the historical trajectory, evaluated at equal elapsed mission time. HUD reports ahead/behind days at equal normalized route progress.
 - Phase 1 complete. Tests: physics regressions and interactive all-mission smoke pass; zero browser errors, aim-preview changes checked, cinematic Skip checked. Screenshots saved under tests/ (ignored).
 - Known limitation: the race uses route progress, rather than geometric proximity, to compare differing launch dates. Next: Phase 2.1 chase camera.
+
+## Phase 2.1 - chase camera
+- C/button toggles map and a physical-scale chase scene (one unit = 1,000 km); planet radii and distances use the same scale, giving correct angular growth. Craft is enlarged and labelled.
+- Solar panel normals track the Sun; dish tracks ephemeris Earth. A point light at the physical Sun gives each planet the correct illumination direction.
+- Screenshot review caught an existing report modal remaining over a subsequent Legendary run; startRoute now closes it and smoke asserts that it is hidden during the cinematic.
+- Tests: full physics regressions plus all-mission interactive smoke; map and chase share the same trajectory. Next: visible burns.

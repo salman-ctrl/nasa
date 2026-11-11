@@ -117,6 +117,7 @@ tailwind.config={theme:{extend:{
   <div class="flex gap-1.5 pt-1 flex-wrap" id="hudSpeeds"></div>
   <div class="flex items-center gap-1 pt-1 border-t border-line">
     <span class="text-[11px] text-muted font-bold mr-1">Gravity view</span>
+    <button id="btnCamera" class="btn text-xs py-1 px-2.5">Map ? C</button>
     <button id="vNewton" class="btn text-xs py-1 px-2.5">Newton</button>
     <button id="vEinstein" class="btn text-xs py-1 px-2.5 dark">Einstein</button>
   </div>
@@ -561,7 +562,7 @@ const STAND=new THREE.Vector3(0,0,0);
    ===================================================================== */
 const disposeTree=o=>o.traverse(n=>{if(n.geometry&&!smoothCache.has(n.geometry))n.geometry.dispose()});
 function buildCraft(c){
-  const g=new THREE.Group(),B=BUS[c.bus],s=B.size,top=s*.45;
+  const g=new THREE.Group();g.userData.panels=[];const B=BUS[c.bus],s=B.size,top=s*.45;
   g.add(mk(new THREE.BoxGeometry(s,s*.9,s),0xe2b23c,{map:foilTex,t:.03}));
   g.add(at(mk(new THREE.BoxGeometry(s*1.04,.08,s*1.04),0xd9d4c7,{t:.02}),0,top,0));g.add(at(mk(new THREE.BoxGeometry(s*1.04,.08,s*1.04),0xd9d4c7,{t:.02}),0,-top,0));
   g.add(at(mk(new THREE.CylinderGeometry(s*.12,s*.26,s*.35,14,1,true),0x5b5f66,{side:THREE.DoubleSide,t:.02}),0,-top-s*.17,0));
@@ -572,7 +573,7 @@ function buildCraft(c){
     for(let w=0;w<P.wings;w++){const a=P.wings===3?w/3*TAU+Math.PI/2:w*Math.PI,wing=new THREE.Group();wing.rotation.y=a;g.add(wing);
       wing.add(at(mk(new THREE.CylinderGeometry(.05,.05,.9,6),0xd9d4c7,{t:.012}),s/2+.4,0,0,0,0,Math.PI/2));
       const segs=Math.max(1,Math.round(P.len/1.3)),sl=P.len/segs;
-      for(let k=0;k<segs;k++){const p=mk(new THREE.BoxGeometry(sl*.96,.05,P.wid),0,{mat:panelMat,t:.018});p.position.set(s/2+.85+sl*(k+.5),0,0);wing.add(p)}}}
+      for(let k=0;k<segs;k++){const p=mk(new THREE.BoxGeometry(sl*.96,.05,P.wid),0,{mat:panelMat,t:.018});p.position.set(s/2+.85+sl*(k+.5),0,0);wing.add(p);g.userData.panels.push(p)}}}
   else{for(let k=0;k<P.n;k++){const r=new THREE.Group(),side=k%2?1:-1,row=Math.floor(k/2);r.position.set(side*(s*.5+.9),-s*.15,(row-(Math.ceil(P.n/2)-1)/2)*1.1);r.rotation.z=side*.5;g.add(r);
       r.add(at(mk(new THREE.CylinderGeometry(.04,.04,1,6),0xd9d4c7,{t:.01}),-side*.45,.22,0,0,0,1.07*-side));
       r.add(at(mk(new THREE.CylinderGeometry(.24,.24,1.3,12),0x5b5f66,{t:.02}),side*.1,0,0));
@@ -580,7 +581,7 @@ function buildCraft(c){
       r.add(at(sprite(0xff8a50,.9,.45),side*.1,0,0))}}
   if(c.comm==='lga'){g.add(at(mk(new THREE.CylinderGeometry(.05,.05,.5,6),0xd9d4c7,{t:.01}),s*.3,topY+.25,s*.3));g.add(at(mk(new THREE.ConeGeometry(.16,.3,12),WHITE,{t:.015}),s*.3,topY+.62,s*.3))}
   else{const dia=c.comm==='hga4'?Math.max(3.4,s*1.4):c.comm==='hga3'?Math.max(2.6,s*1.15):Math.max(1.4,s*.75),th=.62,Rs=dia/(2*Math.sin(th));
-    const d=mk(new THREE.SphereGeometry(Rs,36,10,0,TAU,0,th),0xf6f1e6,{side:THREE.DoubleSide,t:.03});d.rotation.x=Math.PI;d.position.y=topY+.18+Rs;g.add(d);
+    const d=mk(new THREE.SphereGeometry(Rs,36,10,0,TAU,0,th),0xf6f1e6,{side:THREE.DoubleSide,t:.03});d.rotation.x=Math.PI;d.position.y=topY+.18+Rs;g.add(d);g.userData.dish=d;
     g.add(at(mk(new THREE.CylinderGeometry(.12,.2,.36,10),0xd9d4c7,{t:.015}),0,topY+.18,0));
     g.add(at(mk(new THREE.CylinderGeometry(.03,.03,dia*.42,6),0xd9d4c7,{t:.008}),0,topY+.18+dia*.2,0));
     g.add(at(mk(new THREE.ConeGeometry(.09,.18,10),0x5b5f66,{t:.01}),0,topY+.18+dia*.42,0,Math.PI,0,0))}
@@ -748,7 +749,7 @@ function placeMoon(t){const a=SYS.ph+SYS.w*t*DAY,p=new THREE.Vector3(60*Math.cos
    ===================================================================== */
 const rig={tx:0,ty:5.5,tz:0,d:16,yaw:.75,pitch:.2},des=Object.assign({},rig);let shake=0;
 function fit(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}fit();addEventListener('resize',fit);
-function placeCam(dt){const k=1-Math.exp(-dt*3.2);for(const p in rig)rig[p]+=(des[p]-rig[p])*k;
+function placeCam(dt){if(camera.near!==.1){camera.near=.1;camera.far=8000;camera.updateProjectionMatrix()}const k=1-Math.exp(-dt*3.2);for(const p in rig)rig[p]+=(des[p]-rig[p])*k;
   const cp=Math.cos(rig.pitch);camera.position.set(rig.tx+rig.d*Math.sin(rig.yaw)*cp,rig.ty+rig.d*Math.sin(rig.pitch),rig.tz+rig.d*Math.cos(rig.yaw)*cp);
   if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake}camera.lookAt(rig.tx,rig.ty,rig.tz)}
 const shot=o=>Object.assign(des,o);
@@ -862,7 +863,7 @@ function startLegend(id){legend=LEGENDS[id];const L=legend;const jds=L.dates.map
   cfg={mission:'legend',launcher:L.launcher,bus:'M',power:'rtg2',comm:'hga3',passes:1,inst:['cam','spec','mag'],vault:false,margin:10,
     route:{seq:L.seq.slice(),jd0:jds[0],tofs:jds.slice(1).map((x,i)=>x-jds[i])},rr:null};evalCfgRoute();
   $('brief').hidden=true;rebuildModels();startRoute();say(`${L.name}: this is the historical route. Can you find a cheaper one?`)}
-function startRoute(){setPhase('route');active=space;renderRoutePanel();refreshRoute(true);
+function startRoute(){$('report').hidden=true;setPhase('route');active=space;renderRoutePanel();refreshRoute(true);
   const R=SYS.rMax;shot({tx:0,ty:0,tz:0,d:R*2.2,yaw:.35,pitch:1.05});Object.assign(rig,des);rig.d=R*3;if(!legend)say('Plan your route: add flybys and tune the dates')}
 function legDefault(a,b){return Math.round(hohT(a,b))}
 function renderRoutePanel(){const r=cfg.route,b=jdBounds(),tgt=r.seq[r.seq.length-1];
@@ -1000,6 +1001,20 @@ let cr=null,cruiseSpeed=1,paused=false,evtQueue=[],opsT=0,flags={},view='einstei
 const tmpV=new THREE.Vector3();
 
 /* ===== 12.1. PLANET-FRAME FLYBY CINEMATIC ===== */
+let chaseMode=false,chaseCraft=null;
+const chaseScene=new THREE.Scene();chaseScene.background=new THREE.Color(0x161d48);chaseScene.add(new THREE.AmbientLight(0x9aa0d8,.8));
+const chaseSun=new THREE.PointLight(0xfff0d0,3,0,0);chaseScene.add(chaseSun);
+const chaseBodies={};for(const id of Object.keys(PH)){const m=planetMesh(id);m.scale.setScalar(PH[id].R/1e6/PH[id].vR);chaseBodies[id]=m;chaseScene.add(m)}
+const chaseTarget=new THREE.Vector3(),chaseDir=new THREE.Vector3(),localDir=new THREE.Vector3(),chaseQuat=new THREE.Quaternion(),axisY=new THREE.Vector3(0,1,0),axisDish=new THREE.Vector3(0,-1,0);
+function toggleCamera(){chaseMode=!chaseMode;$('btnCamera').textContent=(chaseMode?'Chase':'Map')+' · C';if(chaseCraft){chaseScene.remove(chaseCraft);disposeTree(chaseCraft)}chaseCraft=buildCraft(cfg);chaseCraft.scale.setScalar(.002);chaseScene.add(chaseCraft);say(chaseMode?'Chase: true planet angular sizes; spacecraft enlarged':'Map: distances and planet sizes compressed')}
+$('btnCamera').onclick=toggleCamera;addEventListener('keydown',e=>{if(e.key.toLowerCase()==='c'&&!e.target.matches('input,textarea,select'))toggleCamera()});
+function updateChase(){if(!chaseCraft)toggleCamera();const s=helioState(cr.jd);
+  for(const id in chaseBodies){const r=ephemPos(id,cr.jd);chaseBodies[id].position.set((r[0]-s.r[0])/1e6,0,-(r[1]-s.r[1])/1e6)}
+  chaseSun.position.set(-s.r[0]/1e6,0,s.r[1]/1e6);chaseDir.set(s.v[0],0,-s.v[1]).normalize();
+  chaseCraft.position.set(0,0,0);chaseCraft.lookAt(chaseDir);camera.position.copy(chaseDir).multiplyScalar(-.06);camera.position.y=.025;camera.lookAt(chaseTarget.copy(chaseDir).multiplyScalar(.15));
+  camera.near=.0001;camera.far=1e8;camera.updateProjectionMatrix();
+  for(const panel of chaseCraft.userData.panels){panel.parent.getWorldQuaternion(chaseQuat).invert();localDir.copy(chaseSun.position).normalize().applyQuaternion(chaseQuat);panel.quaternion.setFromUnitVectors(axisY,localDir)}
+  const dish=chaseCraft.userData.dish;if(dish){const earthPos=chaseBodies.earth.position;chaseCraft.getWorldQuaternion(chaseQuat).invert();localDir.copy(earthPos).normalize().applyQuaternion(chaseQuat);dish.quaternion.setFromUnitVectors(axisDish,localDir)}}
 let cinematic=null;
 const flyScene=new THREE.Scene();flyScene.background=new THREE.Color(0x161d48);
 flyScene.add(new THREE.AmbientLight(0x9aa0d8,1.2));
@@ -1271,9 +1286,9 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='launch')updateLaunch(dt);
   if(phase==='cruise')updateCruise(dt);
   if(phase==='ops')updateOps(dt);
-  placeCam(dt);renderer.render(cinematic?flyScene:active,camera);requestAnimationFrame(frame)}
+  placeCam(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
   runTo:(ph)=>new Promise(res=>{const t0=performance.now();const iv=setInterval(()=>{if(aimState)confirmAim();const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};

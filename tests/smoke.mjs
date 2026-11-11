@@ -22,7 +22,7 @@ if(id==='voyager2'){
  await page.evaluate(()=>{window.__game.aimSet(1);window.__game.aimConfirm()});
  await page.waitForFunction(()=>window.__game.flyby(),{timeout:30000});
  await page.evaluate(()=>window.__game.ts(0));
- assert.ok((await page.evaluate(()=>window.__game.flyby())).rpR>9);
+ assert.ok((await page.evaluate(()=>window.__game.flyby())).rpR>9);assert.equal(await page.locator('#report').isVisible(),false);
  await page.screenshot({path:fileURLToPath(new URL('./flyby.png',import.meta.url))});
  await page.evaluate(()=>{window.__game.skipFly();window.__game.ts(40)});
 }

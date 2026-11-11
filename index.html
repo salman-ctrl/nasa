@@ -146,6 +146,7 @@ tailwind.config={theme:{extend:{
 <div id="aeroModal" class="modal" hidden><section class="glass max-w-[500px] w-full p-4"><h2 class="font-extrabold text-lg">Mars orbit lowering</h2><p class="text-xs text-muted">Atmospheric drag lowers apoapsis after capture; it does not replace the capture burn. Dip count and heat are game models.</p><label class="block mt-3">Atmosphere dips <input id="aeroDips" type="range" min="1" max="12" value="4"></label><label>Depth <select id="aeroDepth" class="btn"><option value="1">Gentle</option><option value="2">Deep</option></select></label><p id="aeroReadout" class="text-xs mt-2"></p><div class="flex gap-2 mt-3"><button id="aeroSkip" class="btn">Keep capture orbit</button><button id="aeroChemical" class="btn">Lower with engine</button><button id="aeroGo" class="btn primary">Aerobrake</button></div></section></div>
 <div id="landingModal" class="modal" hidden><section class="glass max-w-[760px] w-full p-4"><h2 class="font-extrabold text-lg">Entry, descent and landing</h2><p class="text-xs text-muted">Deploy a chute below 550 m/s on Mars, then ignite before stopping distance exceeds altitude. The Moon has no atmosphere.</p><canvas id="landingCanvas" width="900" height="400" class="w-full mt-2 rounded-lg"></canvas><p id="landingReadout" class="font-mono text-xs mt-2"></p><div class="flex flex-wrap gap-2 mt-3"><button id="deployChute" class="btn">Deploy parachute</button><button id="igniteDescent" class="btn primary">Ignite descent</button><button id="landingAuto" class="btn">Enable landing guidance</button></div></section></div>
 <div id="teamBar" class="glass fixed left-1/2 bottom-3 -translate-x-1/2 p-2 flex gap-1 flex-wrap z-20 max-w-[700px]" hidden></div>
+<div id="developmentModal" class="modal" hidden><section class="glass max-w-[550px] w-full p-4"><h2 class="font-extrabold text-lg">Development schedule</h2><p class="text-xs text-muted">Mission Lead chooses when the spacecraft will be ready. Faster development costs money (game model).</p><label class="block mt-3">Mission start <input id="developmentStart" type="date" value="2026-01-01" class="btn"></label><div id="developmentChoices" class="grid grid-cols-3 gap-2 mt-3"></div><p id="developmentReadout" class="text-xs mt-3"></p><button id="developmentGo" class="btn primary mt-3">Confirm schedule</button></section></div>
 <!-- tutorial coach -->
 <div id="coach" class="glass fixed z-50 w-[300px] p-3.5 flex flex-col gap-2" hidden>
   <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold tracking-[.12em] uppercase text-flame">Flight school</span><span id="coachN" class="text-[11px] font-bold text-muted"></span></div>
@@ -407,6 +408,8 @@ const INSTR={
   mwr:{name:'Microwave radiometer',mass:45,pw:30,cost:40,data:1,val:{moon:0,mars:1,jupiter:4,saturn:2,neptune:2}}};
 const VAULT={mass:150,cost:30};
 const LANDING_TYPES={orbiter:{name:'Orbiter',mass:0,cost:0,dv:0},lander:{name:'Lander',mass:260,cost:70,dv:1400},rover:{name:'Rover',mass:420,cost:110,dv:1600}};
+const SCHEDULES={standard:{name:'Standard',factor:1,cost:0},accelerated:{name:'Accelerated',factor:.7,cost:30},crunch:{name:'Crunch',factor:.45,cost:80}};
+function development(c){const s=SCHEDULES[c.schedule||'standard'],mass=BUS[c.bus].mass+POWER[c.power].mass+(LANDING_TYPES[c.missionType||'orbiter']?.mass||0),complexity=c.inst.length*40+(c.vault?60:0);return{days:Math.ceil((180+mass*.2+complexity)*s.factor),cost:s.cost}}
 const LANDING_SITES={
  mars:[{id:'jezero',name:'Jezero Crater',fact:'An ancient river delta records a former lake.',risk:'Rocks',bonus:1.3,url:'https://www.jpl.nasa.gov/news/nasas-perseverance-mars-rover-deciphers-ancient-history-of-martian-lake/'},{id:'gale',name:'Gale Crater',fact:'Sedimentary layers preserve an ancient lake history.',risk:'Slopes',bonus:1.2,url:'https://science.nasa.gov/resource/possible-extent-of-ancient-lake-in-gale-crater-mars/'},{id:'utopia',name:'Utopia Planitia',fact:'Radar has detected a large deposit of subsurface ice.',risk:'Low elevation',bonus:1.15,url:'https://science.nasa.gov/wp-content/uploads/2023/05/NuggetUtopiaWater20170127.pdf'}],
  moon:[{id:'shackleton',name:'Shackleton rim',fact:'Sunlit peaks border a permanently shadowed interior.',risk:'Slopes',bonus:1.3,url:'https://science.nasa.gov/resource/shackleton-craters-illuminated-rim-shadowed-interior/'},{id:'tranquillitatis',name:'Mare Tranquillitatis',fact:'Apollo 11 landed here in July 1969.',risk:'Rocks',bonus:1.1,url:'https://science.nasa.gov/resource/apollo-11-landing-site-from-dawn-to-dusk/'}]};
@@ -444,7 +447,7 @@ function compute(c,mods){
   const tofY=R.tof/365.25,lifeY=M.life/12*lifeMul;
   const ops=(12+4*passes)*(tofY+lifeY);
   const hw=L.cost+B.cost+P.cost+A.cost+insts.reduce((s,i)=>s+i.cost,0)+(c.vault?VAULT.cost:0)+landing.cost;
-  const cost=hw+ops+(mods.extraCost||0),budget=M.budget*(mods.budgetMul||1);
+  const cost=hw+ops+development(c).cost+(mods.extraCost||0),budget=M.budget*(mods.budgetMul||1);
   const launchOK=R.ok&&wet<=cap,crashed=!!R.crash;
   let sci=10*insts.reduce((s,i)=>s+i.val[M.id]*(i.img?imgMul:1),0)*duty*dataFrac*lifeFrac*(mods.sciMul||1);
   if(c.missionType&&c.missionType!=='orbiter')sci*=site?.bonus||1;
@@ -782,25 +785,29 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();des.d=clamp(des.d*Math.ex
 /* =====================================================================
    9. GAME STATE + DESIGN UI
    ===================================================================== */
-const STEPS=['Brief','Design','Route','Launch','Cruise','Landing','Operations','Report'];
+const STEPS=['Brief','Design','Development','Route','Launch','Cruise','Landing','Operations','Report'];
 const ROLES=['Mission Lead','Propulsion','Science','Power & Comms'];
 let team={players:1,role:-1,signs:[false,false,false,false],changes:[0,0,0,0]};
 const roleFor=k=>({launcher:1,bus:1,margin:1,vault:1,power:3,comm:3,passes:3,inst:2,missionType:2,site:2}[k]??0);
 const canRole=i=>team.players===1||team.role===i;
 function resetTeam(){const players=+$('crewCount').value;team={players,role:players===1?-1:0,signs:[false,false,false,false],changes:[0,0,0,0]}}
+function openDevelopment(){team.role=team.players===1?-1:0;setPhase('development');$('developmentModal').hidden=false;$('developmentStart').value=jdDate(cfg.startJD).toISOString().slice(0,10);renderDevelopment()}
+function renderDevelopment(){$('developmentChoices').innerHTML=Object.entries(SCHEDULES).map(([id,s])=>`<button class="opt ${cfg.schedule===id?'sel':''}" data-schedule="${id}"><b>${s.name}</b><span>+$${s.cost}M</span></button>`).join('');$('developmentChoices').querySelectorAll('[data-schedule]').forEach(b=>b.onclick=()=>{cfg.schedule=b.dataset.schedule;recordRole(0);renderDevelopment()});const d=development(cfg);$('developmentReadout').textContent=`Player ${0%team.players+1}: Mission Lead. ${d.days} development days; earliest launch ${fmtDate(cfg.startJD+d.days)}. Grey map dates are unavailable.`}
+$('developmentStart').onchange=e=>{const jd=Date.parse(e.target.value+'T00:00:00Z')/864e5+2440587.5;if(Number.isFinite(jd)){cfg.startJD=clamp(jd,JD_MIN,JD_MAX-1000);recordRole(0);renderDevelopment()}};
+$('developmentGo').onclick=()=>{cfg.devConfirmed=true;$('developmentModal').hidden=true;if(cfg.route){cfg.route.jd0=Math.max(cfg.route.jd0,jdBounds().lo);startRoute()}else startDesign()};
 function recordRole(i){team.signs.fill(false);team.changes[i]++;renderTeam()}
 function renderTeam(){const el=$('teamBar');el.hidden=!!legend||!['design','route'].includes(phase);if(el.hidden)return;
   el.innerHTML=ROLES.map((r,i)=>`<button class="btn text-xs py-1 ${team.role===i?'dark':''}" data-rolepick="${i}">P${i%team.players+1}: ${r} ${team.signs[i]?'✓':''}</button>`).join('')+`<button id="roleSign" class="btn primary text-xs py-1">${team.players===1?'Sign off all roles':'Sign off '+ROLES[team.role]}</button>`;
   el.querySelectorAll('[data-rolepick]').forEach(b=>b.onclick=()=>{team.role=+b.dataset.rolepick;if(phase==='design')renderPanel();else renderRoutePanel();renderTeam()});$('roleSign').onclick=()=>{if(team.players===1)team.signs.fill(true);else team.signs[team.role]=true;renderTeam()}}
 let phase='brief',cfg=null,res=null,mods={},launchRes=null,active=earth,legend=null,histRR=null;
 const say=m=>{$('log').textContent=m};
-function setPhase(p){phase=p;renderTeam();const map={brief:0,design:1,route:2,launch:3,cruise:4,landing:5,ops:6,report:7};const i=map[p];
-  $('steps').innerHTML=STEPS.map((s,k)=>{if(legend&&(k===1||k===5))return'';return`<li class="step ${k===i?'on':k<i?'done':''}">${k<i?'✓ ':''}${s}</li>`}).join('');
+function setPhase(p){phase=p;renderTeam();const map={brief:0,design:1,development:2,route:3,launch:4,cruise:5,landing:6,ops:7,report:8};const i=map[p];
+  $('steps').innerHTML=STEPS.map((s,k)=>{if(legend&&(k===1||k===2||k===6||k===7))return'';return`<li class="step ${k===i?'on':k<i?'done':''}">${k<i?'✓ ':''}${s}</li>`}).join('');
   $('panel').hidden=$('review').hidden=p!=='design';$('rpanel').hidden=$('rsum').hidden=p!=='route';$('kpis').hidden=!(p==='design'||(p==='route'&&!legend));
   $('hud').hidden=!(p==='cruise'||p==='ops');$('hint').hidden=!(p==='design'||p==='brief'||p==='cruise'||p==='route');tutShow()}
-function defaults(id){return{mission:id,missionType:'orbiter',site:LANDING_SITES[id]?.[0].id,launcher:'med',bus:'M',power:'solarM',comm:'hga15',passes:1,inst:['cam','spec'],vault:false,margin:10,route:null,rr:null}}
+function defaults(id){return{mission:id,schedule:'standard',startJD:jdOf(2026,1,1),devConfirmed:false,missionType:'orbiter',site:LANDING_SITES[id]?.[0].id,launcher:'med',bus:'M',power:'solarM',comm:'hga15',passes:1,inst:['cam','spec'],vault:false,margin:10,route:null,rr:null}}
 const JD_MIN=jdOf(2026,1,1),JD_MAX=jdOf(2040,12,31);
-function jdBounds(){return legend?{lo:histRR.jds[0]-1200,hi:histRR.jds[0]+1200}:{lo:JD_MIN,hi:JD_MAX}}
+function jdBounds(){return legend?{lo:histRR.jds[0]-1200,hi:histRR.jds[0]+1200}:{lo:Math.max(JD_MIN,(cfg?.startJD||JD_MIN)+(cfg?development(cfg).days:0)),hi:JD_MAX}}
 function evalCfgRoute(){const r=cfg.route;cfg.rr=evalRoute(r.seq,r.jd0,r.tofs,!legend);return cfg.rr}
 function initDirectRoute(target){const b=jdBounds();const t=tuneDE(['earth',target],true,{jdMin:b.lo,jdMax:b.hi});cfg.route={seq:['earth',target],jd0:t.jd0,tofs:t.tofs};evalCfgRoute();cfg.base={dvEq:cfg.rr.dvEq,tof:cfg.rr.tof,c3:cfg.rr.c3}}
 
@@ -883,7 +890,7 @@ function startMission(id){resetTeam();legend=null;histRR=null;cfg=defaults(id);i
 function startDesign(){$('brief').hidden=true;$('report').hidden=true;active=earth;onDesign();setPhase('design');resetLaunchScene();
   shot({tx:STAND.x,ty:5.4,tz:STAND.z,d:clamp(craftStand.userData.span*1.9,15,30),pitch:.26});autoSpin=true;say(`${MISSIONS[cfg.mission].name}: design your spacecraft`)}
 $('btnBack').onclick=()=>goBrief();
-$('btnNext').onclick=()=>{if(MISSIONS[cfg.mission].helio){startRoute();tutEvent('route')}else doLaunch()};
+$('btnNext').onclick=()=>{if(!cfg.devConfirmed){openDevelopment();return}if(MISSIONS[cfg.mission].helio){startRoute();tutEvent('route')}else doLaunch()};
 function goBrief(){legend=null;setPhase('brief');$('brief').hidden=false;$('report').hidden=true;active=earth;resetLaunchScene();shot({tx:-20,ty:12,tz:-40,d:120,pitch:.12});say('Choose a mission to begin')}
 
 /* =====================================================================
@@ -921,7 +928,7 @@ function renderRoutePanel(){const r=cfg.route,b=jdBounds(),tgt=r.seq[r.seq.lengt
   $('rpanel').querySelectorAll('[data-leg]').forEach(inp=>inp.oninput=e=>{const i=+e.target.dataset.leg;r.tofs[i]=+e.target.value;$('o-leg'+i).textContent=fmtDur(r.tofs[i]);routeChanged(false,i===0?false:false)});
   $('btnTune').onclick=autoTune;
   $('btnDirect').onclick=()=>{if(legend){const jds=legend.dates.map(d=>jdOf(...d));Object.assign(r,{seq:legend.seq.slice(),jd0:jds[0],tofs:jds.slice(1).map((x,i)=>x-jds[i])});say('Historical route restored');routeChanged(true)}else{initDirectRoute(tgt);say('Back to a direct flight');renderRoutePanel();refreshRoute(true)}};
-  const pc=$('pork');pc.onclick=e=>{const b2=pc.getBoundingClientRect(),u=(e.clientX-b2.left)/b2.width,v=(e.clientY-b2.top)/b2.height;if(!pork)return;r.jd0=Math.round(lerp(pork.j0,pork.j1,u));r.tofs[0]=Math.round(lerp(pork.t1,pork.t0,v));
+  const pc=$('pork');pc.onclick=e=>{const b2=pc.getBoundingClientRect(),u=(e.clientX-b2.left)/b2.width,v=(e.clientY-b2.top)/b2.height;if(!pork)return;r.jd0=Math.max(jdBounds().lo,Math.round(lerp(pork.j0,pork.j1,u)));r.tofs[0]=Math.round(lerp(pork.t1,pork.t0,v));
     $('r-jd').value=r.jd0;$('o-jd').textContent=fmtDate(r.jd0);$('r-leg0').value=r.tofs[0];$('o-leg0').textContent=fmtDur(r.tofs[0]);routeChanged(false)};
   pork=null;if(!legend&&!canRole(0))$('rpanel').querySelectorAll('input,button,canvas').forEach(e=>{if(e.tagName==='CANVAS')e.style.pointerEvents='none';else e.disabled=true})}
 let routeRAF=0;
@@ -933,12 +940,12 @@ function refreshRoute(rebuildScene){evalCfgRoute();const rr=cfg.rr;
 let pork=null;
 function drawPork(){const c=$('pork');if(!c)return;const g=c.getContext('2d'),W=c.width,H=c.height,r=cfg.route,a=r.seq[0],b=r.seq[1],[t0,t1]=tofRange(a,b),bd=jdBounds();
   const center=pork&&pork.a===a&&pork.b===b&&Math.abs(r.jd0-pork.c)<250?pork.c:r.jd0;
-  if(!pork||pork.a!==a||pork.b!==b||pork.c!==center){const j0=Math.max(bd.lo,center-365),j1=Math.min(bd.hi,center+365),NX=75,NY=38,img=g.createImageData(NX,NY);
+  if(!pork||pork.a!==a||pork.b!==b||pork.c!==center){const j0=Math.max(legend?bd.lo:JD_MIN,center-365),j1=Math.min(bd.hi,center+365),NX=75,NY=38,img=g.createImageData(NX,NY);
     const vals=new Float32Array(NX*NY).fill(NaN);let mn=1e9;
     for(let ix=0;ix<NX;ix++)for(let iy=0;iy<NY;iy++){const jd=lerp(j0,j1,ix/(NX-1)),tf=lerp(t1,t0,iy/(NY-1));const L=lambert(ephemPos(a,jd),ephemPos(b,jd+tf),tf*DAY,MU_SUN);
       if(L){const c3=(nrm(sub(L.v1,ephemVel(a,jd)))/1000)**2;vals[iy*NX+ix]=c3;if(c3<mn)mn=c3}}
     const pal=[[0,[31,111,106]],[.12,[95,179,138]],[.3,[226,178,60]],[.6,[226,119,46]],[1,[185,58,44]]],span=Math.max(25,mn*.9);
-    for(let q=0;q<NX*NY;q++){let col=[60,62,80];const c3=vals[q];if(c3===c3){const u=clamp((c3-mn)/span,0,1);let k=0;while(k<pal.length-2&&u>pal[k+1][0])k++;const f=clamp((u-pal[k][0])/(pal[k+1][0]-pal[k][0]),0,1);col=pal[k][1].map((v,z)=>v+(pal[k+1][1][z]-v)*f)}
+    for(let q=0;q<NX*NY;q++){let col=[60,62,80];const c3=vals[q];if(lerp(j0,j1,(q%NX)/(NX-1))<bd.lo){col=[95,95,105]}else if(c3===c3){const u=clamp((c3-mn)/span,0,1);let k=0;while(k<pal.length-2&&u>pal[k+1][0])k++;const f=clamp((u-pal[k][0])/(pal[k+1][0]-pal[k][0]),0,1);col=pal[k][1].map((v,z)=>v+(pal[k+1][1][z]-v)*f)}
       const o=q*4;img.data[o]=col[0];img.data[o+1]=col[1];img.data[o+2]=col[2];img.data[o+3]=255}
     const off=document.createElement('canvas');off.width=NX;off.height=NY;off.getContext('2d').putImageData(img,0,0);pork={a,b,c:center,j0,j1,t0,t1,off,mn,span}}
   g.imageSmoothingEnabled=true;g.drawImage(pork.off,0,0,W,H);
@@ -993,7 +1000,7 @@ let lt=0;
 function resetLaunchScene(){fireball.visible=false;if(rocket){rocket.visible=true;rocket.userData.fail=null;rocket.userData.sep=0;rocket.position.set(PAD.x,3,PAD.z);rocket.rotation.set(0,0,0);rocket.userData.plume.visible=false;
     rocket.userData.boosters.forEach((b,i)=>{b.position.set((b.position.x<0?-1:1)*b.userData.x0,0,0);b.rotation.set(0,0,0);b.userData.vx=0;if(b.userData.plume)b.userData.plume.visible=false})}
   flame.visible=false;smoke.visible=false;pLife.fill(0);sm.forEach(s=>s.age=99);if(craftStand)craftStand.visible=true}
-function doLaunch(){if(!legend&&!team.signs.every(Boolean)){say('All four roles must sign off before launch.');renderTeam();return}surfaceMode=false;edl=null;endCinematic();aimState=null;$('aimModal').hidden=true;if(legend){const rr=cfg.rr;const opts=['med','heavy','super'];const dry=600;cfg.launcher=opts.find(id=>capacity(LAUNCHERS[id],rr.c3)>=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)))||'super';rebuildModels()}
+function doLaunch(){if(!legend&&cfg.route&&cfg.route.jd0<jdBounds().lo){say('Launch date is before development finishes. Re-tune the route.');return}if(!legend&&!team.signs.every(Boolean)){say('All four roles must sign off before launch.');renderTeam();return}surfaceMode=false;edl=null;endCinematic();aimState=null;$('aimModal').hidden=true;if(legend){const rr=cfg.rr;const opts=['med','heavy','super'];const dry=600;cfg.launcher=opts.find(id=>capacity(LAUNCHERS[id],rr.c3)>=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)))||'super';rebuildModels()}
   launchRes=legend?legendResult():compute(cfg);mods={};environmental={eclipse:false,blackout:false,battery:1};active=earth;resetLaunchScene();setPhase('launch');lt=0;craftStand.visible=false;flame.visible=smoke.visible=true;autoSpin=false;
   shot({tx:PAD.x,ty:30,tz:PAD.z,d:140,yaw:.4,pitch:.07});Object.assign(rig,des);rig.d=200;say(`Payload encapsulated on the ${LAUNCHERS[cfg.launcher].name.toLowerCase()}. Countdown.`)}
 function legendResult(){const rr=cfg.rr,L=LAUNCHERS[cfg.launcher],dry=600,wet=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)),cap=capacity(L,rr.c3);return{legend:true,rr,L,dry,wet,cap,launchOK:rr.ok&&wet<=cap,crashed:!!rr.crash,alive:true}}
@@ -1275,7 +1282,7 @@ let lastReport=null;
 function showReport(kind){$('environmentHud').hidden=true;setPhase('report');$('hud').hidden=true;
   const stat=(v,l)=>`<div class="bg-paper2 rounded-lg p-2.5"><b class="block text-lg font-extrabold tabular-nums">${v}</b><span class="text-[11px] text-muted font-semibold">${l}</span></div>`;
   const bar=(l,f,col)=>`<div><div class="flex justify-between text-[11.5px] font-bold"><span>${l}</span><span>${fmt(clamp(f,0,1)*100)}%</span></div><div class="bar mt-1"><i style="width:${clamp(f,0,1)*100}%;background:${col}"></i></div></div>`;
-  const rr=cfg.rr,L=[];if(!legend)L.push('Team contributions: '+ROLES.map((r,i)=>`${r} (Player ${i%team.players+1}): ${team.changes[i]} decisions, ${team.signs[i]?'signed':'unsigned'}`).join('; '));if(mods.landing)L.push(mods.landing);if(mods.aero)L.push(mods.aero);if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
+  const rr=cfg.rr,L=[];if(!legend)L.push('Development: '+SCHEDULES[cfg.schedule||'standard'].name+', '+development(cfg).days+' days; ready '+fmtDate(jdBounds().lo)+'.');if(!legend)L.push('Team contributions: '+ROLES.map((r,i)=>`${r} (Player ${i%team.players+1}): ${team.changes[i]} decisions, ${team.signs[i]?'signed':'unsigned'}`).join('; '));if(mods.landing)L.push(mods.landing);if(mods.aero)L.push(mods.aero);if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
   const routeBlock=()=>{if(!rr||!rr.ok)return'';const fs=fuelStats(rr);return`<div class="p-3 rounded-lg bg-paper2 border border-line">
      <div class="flex flex-wrap items-center gap-1 text-[12px] font-bold">${rr.seq.map(id=>`<span class="inline-flex items-center gap-1"><i class="dot" style="background:${PH[id].col}"></i>${PH[id].name}</span>`).join('<span class="text-muted">→</span>')}</div>
      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11.5px]"><div><b class="block text-[15px]">${fmt(rr.c3,1)}</b><span class="text-muted">C3 km²/s²</span></div><div><b class="block text-[15px] text-ok">+${fmt(rr.free/1000,2)}</b><span class="text-muted">km/s free speed</span></div><div><b class="block text-[15px]">${fmt(rr.dvEq/1000,2)}</b><span class="text-muted">km/s total Δv</span></div><div><b class="block text-[15px] ${fs.saved>0?'text-ok':'text-warn'}">${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,2)} t</b><span class="text-muted">propellant vs ${legend?'history':'direct'}</span></div></div></div>`};
@@ -1371,7 +1378,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='landing')updateLanding(dt);if(phase==='ops')updateOps(dt);
   placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(surfaceMode&&phase==='ops'?surfaceScene:cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={development:()=>openDevelopment(),crew:n=>{$('crewCount').value=n},role:i=>{team.role=i;renderPanel();renderTeam()},signAll:()=>{team.signs.fill(true);renderTeam()},landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
   runTo:(ph)=>new Promise(res=>{assistedReplay=true;const t0=performance.now();const iv=setInterval(()=>{if(edl)edl.auto=true;if(aimState)confirmAim();if(!$('aeroModal').hidden)finishAerobraking('keep');const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);assistedReplay=false;res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};

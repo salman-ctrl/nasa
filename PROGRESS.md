@@ -111,3 +111,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Hardware and route changes invalidate sign-offs. All four roles must approve launch (one-player mode can sign all roles together). Report records role owner, decisions and approval.
 - Tests: browser checks four-player Science cannot see launcher choices and unsigned launch stays in Design; all missions, physics and EDL checks pass with zero errors.
 - Decision: local hot-seat roles are a device handoff, with no identity or network authentication. Next: development schedule.
+
+## Phase 4.2 - development and launch dates
+- Added a Development step with mission start date and Standard/Accelerated/Crunch schedules. Mass and instrument complexity determine duration; acceleration adds cost.
+- Route bounds and launch checks enforce readiness date. Porkchop dates before readiness are grey and cannot be selected. Report shows development duration and readiness.
+- Tests: physics/EDL and all-mission smoke pass with zero errors. Game schedule costs/durations are assumptions. Legendary missions retain historical dates and bypass development.
+- Next: command light time and autonomy.

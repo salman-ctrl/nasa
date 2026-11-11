@@ -92,3 +92,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Mars offers keeping capture orbit, chemical lowering or 1-12 gentle/deep atmospheric dips. Final eccentricity sets the new orbit; vis-viva gives delta-v avoided versus an engine reaching the same orbit. Chemical lowering spends reserve; aerodynamic savings earn a labelled game-model science efficiency bonus. Excess heat damages an instrument.
 - Tests: historical regressions and all-mission interactive smoke pass; zero console errors. Reduced-motion remains supported for flyby cinema.
 - Assumptions: dip efficacy and heat budget are game models; aerobraking occurs after capture, never removes capture delta-v. Next: Phase 3 landing types.
+
+## Phase 3.1 and 3.2 - surface mission design and NASA sites
+- Design supports orbiter/lander/rover with added hardware mass, price, descent delta-v and site science bonuses.
+- NASA-linked facts cover Jezero, Gale, Utopia, Shackleton rim and Mare Tranquillitatis. Risk and bonus values are explicitly game models.
+- Decision: landers and rovers are limited to Moon/Mars; a gas giant has no solid surface. Other missions retain orbiters and moon tours arrive in Phase 4.
+- Tests: physics and all-mission smoke pass with zero errors. Landing dispatch and interactive EDL are the next feature; current type choices affect engineering and science only.

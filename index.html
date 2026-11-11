@@ -400,6 +400,10 @@ const INSTR={
   mag:{name:'Magnetometer',mass:8,pw:5,cost:10,data:0.1,val:{moon:1,mars:1,jupiter:4,saturn:3,neptune:3}},
   mwr:{name:'Microwave radiometer',mass:45,pw:30,cost:40,data:1,val:{moon:0,mars:1,jupiter:4,saturn:2,neptune:2}}};
 const VAULT={mass:150,cost:30};
+const LANDING_TYPES={orbiter:{name:'Orbiter',mass:0,cost:0,dv:0},lander:{name:'Lander',mass:260,cost:70,dv:1400},rover:{name:'Rover',mass:420,cost:110,dv:1600}};
+const LANDING_SITES={
+ mars:[{id:'jezero',name:'Jezero Crater',fact:'An ancient river delta records a former lake.',risk:'Rocks',bonus:1.3,url:'https://www.jpl.nasa.gov/news/nasas-perseverance-mars-rover-deciphers-ancient-history-of-martian-lake/'},{id:'gale',name:'Gale Crater',fact:'Sedimentary layers preserve an ancient lake history.',risk:'Slopes',bonus:1.2,url:'https://science.nasa.gov/resource/possible-extent-of-ancient-lake-in-gale-crater-mars/'},{id:'utopia',name:'Utopia Planitia',fact:'Radar has detected a large deposit of subsurface ice.',risk:'Low elevation',bonus:1.15,url:'https://science.nasa.gov/wp-content/uploads/2023/05/NuggetUtopiaWater20170127.pdf'}],
+ moon:[{id:'shackleton',name:'Shackleton rim',fact:'Sunlit peaks border a permanently shadowed interior.',risk:'Slopes',bonus:1.3,url:'https://science.nasa.gov/resource/shackleton-craters-illuminated-rim-shadowed-interior/'},{id:'tranquillitatis',name:'Mare Tranquillitatis',fact:'Apollo 11 landed here in July 1969.',risk:'Rocks',bonus:1.1,url:'https://science.nasa.gov/resource/apollo-11-landing-site-from-dawn-to-dusk/'}]};
 const capacity=(L,c3)=>L.m0*Math.exp(-c3/L.k);
 const routeName=seq=>seq.map(id=>PH[id].name).join(' → ');
 
@@ -413,8 +417,9 @@ function compute(c,mods){
   mods=mods||{};
   const M=MISSIONS[c.mission],R=routeInfo(c),L=LAUNCHERS[c.launcher],B=BUS[c.bus],P=POWER[c.power],A=COMMS[c.comm];
   const insts=c.inst.filter(id=>id!==mods.lost).map(id=>Object.assign({id},INSTR[id]));
-  const dry=B.mass+P.mass+A.mass+insts.reduce((s,i)=>s+i.mass,0)+(c.vault?VAULT.mass:0);
-  const margin=c.margin/100,dvNom=R.dvSc/1000,dv=dvNom*(1+margin);
+  const landing=LANDING_TYPES[c.missionType||'orbiter'],site=LANDING_SITES[c.mission]?.find(s=>s.id===c.site)||LANDING_SITES[c.mission]?.[0];
+  const dry=B.mass+P.mass+A.mass+insts.reduce((s,i)=>s+i.mass,0)+(c.vault?VAULT.mass:0)+landing.mass;
+  const margin=c.margin/100,dvNom=(R.dvSc+landing.dv*(c.mission==='moon'?1.5:1))/1000,dv=dvNom*(1+margin);
   const ratio=Math.exp(dv*1000/(ISP*G0)),prop=dry*(ratio-1),wet=dry+prop;               // Tsiolkovsky
   const cap=R.ok?capacity(L,R.c3):0;
   const pAvail=P.kind==='solar'?P.p1/(M.sunDist*M.sunDist)*0.85:P.p;                    // inverse square
@@ -432,10 +437,12 @@ function compute(c,mods){
   const short=(mods.dvUse||0)>margin+1e-9;if(short)lifeFrac*=0.4;
   const tofY=R.tof/365.25,lifeY=M.life/12*lifeMul;
   const ops=(12+4*passes)*(tofY+lifeY);
-  const hw=L.cost+B.cost+P.cost+A.cost+insts.reduce((s,i)=>s+i.cost,0)+(c.vault?VAULT.cost:0);
+  const hw=L.cost+B.cost+P.cost+A.cost+insts.reduce((s,i)=>s+i.cost,0)+(c.vault?VAULT.cost:0)+landing.cost;
   const cost=hw+ops+(mods.extraCost||0),budget=M.budget*(mods.budgetMul||1);
   const launchOK=R.ok&&wet<=cap,crashed=!!R.crash;
   let sci=10*insts.reduce((s,i)=>s+i.val[M.id]*(i.img?imgMul:1),0)*duty*dataFrac*lifeFrac*(mods.sciMul||1);
+  if(c.missionType&&c.missionType!=='orbiter')sci*=site?.bonus||1;
+  if(mods.landingCrash)sci=0;
   if(!launchOK||!alive||crashed)sci=0;
   return{M,R,L,B,P,A,insts,dry,dv,dvNom,margin,prop,wet,cap,pAvail,base,iLoad,alive,duty,passes,rate,down,gen,dataFrac,lifeFrac,short,tofY,lifeY,ops,hw,cost,budget,sci,launchOK,crashed}}
 
@@ -776,7 +783,7 @@ function setPhase(p){phase=p;const map={brief:0,design:1,route:2,launch:3,cruise
   $('steps').innerHTML=STEPS.map((s,k)=>{if(legend&&(k===1||k===5))return'';return`<li class="step ${k===i?'on':k<i?'done':''}">${k<i?'✓ ':''}${s}</li>`}).join('');
   $('panel').hidden=$('review').hidden=p!=='design';$('rpanel').hidden=$('rsum').hidden=p!=='route';$('kpis').hidden=!(p==='design'||(p==='route'&&!legend));
   $('hud').hidden=!(p==='cruise'||p==='ops');$('hint').hidden=!(p==='design'||p==='brief'||p==='cruise'||p==='route');tutShow()}
-function defaults(id){return{mission:id,launcher:'med',bus:'M',power:'solarM',comm:'hga15',passes:1,inst:['cam','spec'],vault:false,margin:10,route:null,rr:null}}
+function defaults(id){return{mission:id,missionType:'orbiter',site:LANDING_SITES[id]?.[0].id,launcher:'med',bus:'M',power:'solarM',comm:'hga15',passes:1,inst:['cam','spec'],vault:false,margin:10,route:null,rr:null}}
 const JD_MIN=jdOf(2026,1,1),JD_MAX=jdOf(2040,12,31);
 function jdBounds(){return legend?{lo:histRR.jds[0]-1200,hi:histRR.jds[0]+1200}:{lo:JD_MIN,hi:JD_MAX}}
 function evalCfgRoute(){const r=cfg.route;cfg.rr=evalRoute(r.seq,r.jd0,r.tofs,!legend);return cfg.rr}
@@ -823,6 +830,9 @@ function updateKPIs(){const r=res,M=r.M;
 function group(title,key,items,note){const opts=items.map(([id,o,meta,dis])=>`<button class="opt ${cfg[key]===id?'sel':''} ${dis?'dis':''}" data-k="${key}" data-v="${id}" ${dis?'disabled':''}><b>${o}</b><span>${meta}</span></button>`).join('');
   return`<div class="grp"><h4>${title}</h4>${note?`<p class="text-[11px] text-muted -mt-1 mb-1.5 leading-snug">${note}</p>`:''}<div class="grid grid-cols-2 gap-1.5">${opts}</div></div>`}
 function renderPanel(){const M=MISSIONS[cfg.mission],B=BUS[cfg.bus],R=routeInfo(cfg);let h='';
+  h+=group('Mission type','missionType',Object.entries(LANDING_TYPES).map(([id,t])=>[id,t.name,`${t.mass} kg / $${t.cost}M`,id!=='orbiter'&&!LANDING_SITES[cfg.mission]]),'Landing hardware and surface bonuses are game models. Surface missions are available at the Moon and Mars.');
+  if(cfg.missionType!=='orbiter'&&LANDING_SITES[cfg.mission]){h+=group('Landing site','site',LANDING_SITES[cfg.mission].map(s=>[s.id,s.name,`${s.risk} / science x${s.bonus} (game model)`]));const site=LANDING_SITES[cfg.mission].find(s=>s.id===cfg.site)||LANDING_SITES[cfg.mission][0];h+=`<p class="text-xs text-muted">${site.fact} <a href="${site.url}" target="_blank" rel="noopener" class="underline">NASA site facts</a></p>`}
+
   h+=group('Launch vehicle','launcher',Object.entries(LAUNCHERS).map(([id,L])=>[id,L.name,`${L.note} · $${L.cost}M · ${R.ok?fmt(capacity(L,R.c3))+' kg':'—'}`]),M.helio?`Capacity at the current route's launch energy (C3 ${fmt(R.c3,0)}). Flybys lower C3 in the next step.`:'');
   h+=group('Spacecraft bus','bus',Object.entries(BUS).map(([id,b])=>[id,b.name,`${b.slots} slots · ${b.mass} kg · ${b.load} W · $${b.cost}M`]));
   h+=group('Power','power',Object.entries(POWER).map(([id,p])=>[id,p.name,p.kind==='solar'?`${fmt(p.p1)} W at 1 AU · ${p.mass} kg · $${p.cost}M`:`${p.p} W anywhere · ${p.mass} kg · $${p.cost}M`]),'Sunlight at '+M.targetName+': '+(M.sunDist===1?'same as Earth':`1/${fmt(M.sunDist**2,0)} of Earth`)+'.');

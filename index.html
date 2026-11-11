@@ -143,6 +143,7 @@ tailwind.config={theme:{extend:{
 <div id="aimReadout" class="text-xs leading-relaxed"></div>
 <div class="flex gap-2 mt-3"><button id="aimReset" class="btn">Aim at plan</button><button id="aimGo" class="btn primary">Confirm aim</button></div>
 </section></div>
+<div id="aeroModal" class="modal" hidden><section class="glass max-w-[500px] w-full p-4"><h2 class="font-extrabold text-lg">Mars orbit lowering</h2><p class="text-xs text-muted">Atmospheric drag lowers apoapsis after capture; it does not replace the capture burn. Dip count and heat are game models.</p><label class="block mt-3">Atmosphere dips <input id="aeroDips" type="range" min="1" max="12" value="4"></label><label>Depth <select id="aeroDepth" class="btn"><option value="1">Gentle</option><option value="2">Deep</option></select></label><p id="aeroReadout" class="text-xs mt-2"></p><div class="flex gap-2 mt-3"><button id="aeroSkip" class="btn">Keep capture orbit</button><button id="aeroChemical" class="btn">Lower with engine</button><button id="aeroGo" class="btn primary">Aerobrake</button></div></section></div>
 <!-- tutorial coach -->
 <div id="coach" class="glass fixed z-50 w-[300px] p-3.5 flex flex-col gap-2" hidden>
   <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold tracking-[.12em] uppercase text-flame">Flight school</span><span id="coachN" class="text-[11px] font-bold text-muted"></span></div>
@@ -335,6 +336,7 @@ function aimSolution(rr,f,b){const p=PH[f.id],a=p.mu/f.vin**2,rp=Math.sqrt(a*a+b
   return{rp,delta,vo,v,miss,correction,tooClose:rp<p.rMin}}
 function shadowCylinder(sc,body,radius){const len=nrm(body);if(!len)return false;const dx=sc[0]-body[0],dy=sc[1]-body[1],along=(dx*body[0]+dy*body[1])/len;return along>0&&Math.abs(dx*body[1]-dy*body[0])/len<radius}
 function conjunctionAngle(sc,earth){const line=sub(sc,earth),length=nrm(line)*nrm(earth);return length>1?Math.acos(clamp(-(earth[0]*line[0]+earth[1]*line[1])/length,-1,1)):Math.PI}
+function captureOrbitPoint(rp,e,fraction){const M=(fraction%1)*TAU;let E=M;for(let k=0;k<20;k++)E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));const a=rp/(1-e);return[a*(Math.cos(E)-e),a*Math.sqrt(1-e*e)*Math.sin(E)]}
 
 /* =====================================================================
    2. MISSION DATA (simplified engineering models, real physics laws)
@@ -1021,6 +1023,17 @@ function updateEnvironment(sc,jd,dt,ops){const earth=ephemPos('earth',jd);let ec
   environmental={eclipse,blackout,battery:clamp(environmental.battery+(eclipse?-dt/20:dt/10),0,1)};
   if(ops){mods.opsSamples=(mods.opsSamples||0)+dt;if(blackout)mods.blackoutSamples=(mods.blackoutSamples||0)+dt}
   $('environmentHud').hidden=!(eclipse||blackout);$('environmentHud').textContent=(eclipse?'Eclipse: solar 0 W | battery '+fmt(environmental.battery*100)+'% ':'')+(blackout?'Comms blackout: downlink 0':'');return environmental}
+function setupCaptureOrbit(){const p=cr.mode==='moon'?{R:1737.4e3,rCap:1837.4e3,eCap:.6}:PH[res.M.target];SYS.capture={rp:p.rCap,R:p.R,e:p.eCap};drawCaptureOrbit()}
+function drawCaptureOrbit(){const cap=SYS.capture;if(cap.line){dyn.remove(cap.line);cap.line.geometry.dispose();cap.line.material.dispose()}const vr=cr.mode==='moon'?2.2:PH[res.M.target].vR,points=[];
+  for(let i=0;i<=240;i++){const q=captureOrbitPoint(cap.rp,cap.e,i/240);points.push(new THREE.Vector3(q[0]/cap.R*vr,0,-q[1]/cap.R*vr))}cap.line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0x8ff0c8}));dyn.add(cap.line)}
+function aeroPlan(){const dips=+$('aeroDips').value,depth=+$('aeroDepth').value,e=Math.max(.1,.9*Math.exp(-dips*depth*.12)),p=PH.mars,heat=dips*depth**2*.12;
+  const dv=Math.sqrt(p.mu*(1+.9)/p.rCap)-Math.sqrt(p.mu*(1+e)/p.rCap);return{dips,depth,e,heat,dv}}
+function aeroReadout(){const a=aeroPlan();$('aeroReadout').textContent=`${a.dips} dips; final eccentricity ${fmt(a.e,2)}, heat ${fmt(a.heat,2)} / 1.0; avoids ${fmt(a.dv/1000,3)} km/s of engine orbit-lowering burns. Above heat limit damages an instrument.`}
+function openAerobraking(){paused=true;$('aeroModal').hidden=false;aeroReadout()}
+function finishAerobraking(mode){if($('aeroModal').hidden)return;const a=aeroPlan();if(mode!=='keep'){SYS.capture.e=a.e;drawCaptureOrbit();if(mode==='chemical'){mods.dvUse=(mods.dvUse||0)+a.dv/cfg.rr.dvSc;triggerBurn(a.dv)}else{mods.aeroSaved=a.dv;mods.sciMul=(mods.sciMul||1)*(1+Math.min(.1,a.dv/10000));if(a.heat>1&&cfg.inst.length)mods.lost=cfg.inst[0]}
+    mods.aero=`${mode==='chemical'?'Engine orbit lowering':'Aerobraking'}: eccentricity ${fmt(a.e,2)}, ${a.dips} atmosphere dips, heat ${fmt(a.heat,2)}. ${mode==='chemical'?'Spent':'Avoided'} ${fmt(a.dv/1000,3)} km/s versus the same final orbit; ${mode==='aero'&&a.heat>1?'instrument heat damage':'instruments safe'}.`}
+  res=compute(cfg,mods);$('aeroModal').hidden=true;paused=false}
+$('aeroDips').oninput=$('aeroDepth').onchange=aeroReadout;$('aeroGo').onclick=()=>finishAerobraking('aero');$('aeroSkip').onclick=()=>finishAerobraking('keep');$('aeroChemical').onclick=()=>finishAerobraking('chemical');
 let chaseMode=false,chaseCraft=null;
 const chaseScene=new THREE.Scene();chaseScene.background=new THREE.Color(0x161d48);chaseScene.add(new THREE.AmbientLight(0x9aa0d8,.8));
 const chaseSun=new THREE.PointLight(0xfff0d0,3,0,0);chaseScene.add(chaseSun);
@@ -1171,16 +1184,16 @@ function arrive(){if(!legend)triggerBurn(cr.mode==='moon'?MISSIONS.moon.insertio
   shot({tx:T.position.x,ty:0,tz:T.position.z,d:vR*7,pitch:.32});
   if(!res.alive){banner(`Power failure at ${lr.M.targetName}`,2600);SFX.sad();say(`Only ${fmt(res.pAvail)} W of power: the spacecraft cannot run its radio. Signal lost.`)}
   else if(res.short){banner('Insertion burn short<br><span class="text-xl">propellant ran out: lower-quality orbit</span>',2600);say('Propellant margin was spent on anomalies: degraded orbit')}
-  else{banner(`Orbit insertion<br><span class="text-xl">${fmt(cr.mode==='moon'?lr.M.insertion:cfg.rr.dvCap/1000,2)} km/s burn · captured by ${lr.M.targetName}</span>`,2600);say(`Welcome to ${lr.M.targetName}. Science operations begin`)}}
-function updateOps(dt){opsT+=dt;const legendMode=launchRes.legend;
+  else{banner(`Orbit insertion<br><span class="text-xl">${fmt(cr.mode==='moon'?lr.M.insertion:cfg.rr.dvCap/1000,2)} km/s burn · captured by ${lr.M.targetName}</span>`,2600);say(`Welcome to ${lr.M.targetName}. Science operations begin`)}setupCaptureOrbit();if(lr.M.id==='mars')openAerobraking()}
+function updateOps(dt){if(paused)return;opsT+=dt;const legendMode=launchRes.legend;
   let T,vR;if(cr.mode==='moon'){placeMoon(cr.tof+opsT*.3);T=SYS.moon.m;vR=2.2}else{placeHelio(cr.jdEnd+opsT*.8);const id=cfg.rr.seq[cfg.rr.seq.length-1];T=SYS.bodies[id].m;vR=PH[id].vR}
   const c=T.position;
   if(!legendMode){const jd=cr.mode==='moon'?JD_MIN+cr.tof+opsT*.8:cr.jdEnd+opsT*.8,id=cr.mode==='moon'?'earth':res.M.target,body=ephemPos(id,jd),rad=cr.mode==='moon'?R_MOON:PH[id].rCap,angle=cr.mode==='moon'?SYS.ph+SYS.w*(cr.tof+opsT*.3)*DAY:opsT*1.4;
     updateEnvironment([body[0]+rad*Math.cos(angle),body[1]+rad*Math.sin(angle)],jd,dt,true);res=compute(cfg,mods)}
   if(legendMode){const s=helioState(cr.jdEnd),dir=new THREE.Vector3(s.v[0],0,-s.v[1]).normalize();SYS.craft.position.copy(c).addScaledVector(dir,vR*1.6+opsT*vR*.8).y+=vR*.4}
-  else{const a=opsT*1.4,rr=vR*2.4;SYS.craft.position.set(c.x+Math.cos(a)*rr,Math.sin(a*.5)*vR*.4,c.z-Math.sin(a)*rr);SYS.craft.lookAt(c.x+Math.cos(a+.1)*rr,0,c.z-Math.sin(a+.1)*rr)}
+  else{const cap=SYS.capture,q=captureOrbitPoint(cap.rp,cap.e,opsT/4),next=captureOrbitPoint(cap.rp,cap.e,(opsT+.01)/4),scale=vR/cap.R;SYS.craft.position.set(c.x+q[0]*scale,0,c.z-q[1]*scale);SYS.craft.lookAt(c.x+next[0]*scale,0,c.z-next[1]*scale);cap.line.position.copy(c);des.d=Math.max(vR*7,Math.hypot(...q)*scale*2.8);des.tx=c.x+q[0]*scale*.4;des.tz=c.z-q[1]*scale*.4}
   if(SYS.pulse&&SYS.pulse.userData.t!=null){const t=SYS.pulse.userData.t+=dt;SYS.pulse.position.copy(c);SYS.pulse.material.opacity=Math.max(0,1-t/1.6);SYS.pulse.scale.setScalar(vR*2+t*vR*6);if(t>1.6)SYS.pulse.userData.t=null}
-  des.tx=c.x;des.tz=c.z;des.yaw+=dt*.12;updateViewFX(dt,SYS.craft.position,AU,0);
+  if(legendMode){des.tx=c.x;des.tz=c.z}des.yaw+=dt*.12;updateViewFX(dt,SYS.craft.position,AU,0);
   if(legendMode){$('hudPhase').textContent='Encounter';$('hudDay').textContent=fmtDate(cr.jdEnd);hudRows([['Route',routeName(cfg.rr.seq)],['Duration',fmtDur(cfg.rr.tof)]]);if(opsT>4&&!flags.rep){flags.rep=1;showReport('legend')}return}
   const f=sstep(.5,6.5,opsT),mo=f*res.M.life*Math.min(1,res.lifeFrac);
   $('hudPhase').textContent=res.alive?'Science operations':'Signal lost';$('hudDay').textContent=`Month ${fmt(mo,1)}`;$('hudBar').style.width=(f*100)+'%';
@@ -1214,7 +1227,7 @@ let lastReport=null;
 function showReport(kind){$('environmentHud').hidden=true;setPhase('report');$('hud').hidden=true;
   const stat=(v,l)=>`<div class="bg-paper2 rounded-lg p-2.5"><b class="block text-lg font-extrabold tabular-nums">${v}</b><span class="text-[11px] text-muted font-semibold">${l}</span></div>`;
   const bar=(l,f,col)=>`<div><div class="flex justify-between text-[11.5px] font-bold"><span>${l}</span><span>${fmt(clamp(f,0,1)*100)}%</span></div><div class="bar mt-1"><i style="width:${clamp(f,0,1)*100}%;background:${col}"></i></div></div>`;
-  const rr=cfg.rr,L=[];if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
+  const rr=cfg.rr,L=[];if(mods.aero)L.push(mods.aero);if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
   const routeBlock=()=>{if(!rr||!rr.ok)return'';const fs=fuelStats(rr);return`<div class="p-3 rounded-lg bg-paper2 border border-line">
      <div class="flex flex-wrap items-center gap-1 text-[12px] font-bold">${rr.seq.map(id=>`<span class="inline-flex items-center gap-1"><i class="dot" style="background:${PH[id].col}"></i>${PH[id].name}</span>`).join('<span class="text-muted">→</span>')}</div>
      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11.5px]"><div><b class="block text-[15px]">${fmt(rr.c3,1)}</b><span class="text-muted">C3 km²/s²</span></div><div><b class="block text-[15px] text-ok">+${fmt(rr.free/1000,2)}</b><span class="text-muted">km/s free speed</span></div><div><b class="block text-[15px]">${fmt(rr.dvEq/1000,2)}</b><span class="text-muted">km/s total Δv</span></div><div><b class="block text-[15px] ${fs.saved>0?'text-ok':'text-warn'}">${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,2)} t</b><span class="text-muted">propellant vs ${legend?'history':'direct'}</span></div></div></div>`};
@@ -1310,10 +1323,10 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='ops')updateOps(dt);
   placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
-  runTo:(ph)=>new Promise(res=>{const t0=performance.now();const iv=setInterval(()=>{if(aimState)confirmAim();const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};
+  runTo:(ph)=>new Promise(res=>{const t0=performance.now();const iv=setInterval(()=>{if(aimState)confirmAim();if(!$('aeroModal').hidden)finishAerobraking('keep');const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};
 </script>
 </body>
 </html>

@@ -86,3 +86,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Earth-centred Sun/spacecraft angle below two degrees produces a blackout banner and zero instantaneous downlink. Operations availability feeds the engineering data fraction and final science; transitions appear in the report.
 - Tests: shadow front/behind/off-axis and conjunction/opposition unit cases pass, full physics and all-mission smoke pass with zero errors.
 - Assumptions: cylindrical shadows, no penumbra, two-degree radio threshold and battery endurance are game models; planar ephemeris. Next: capture orbit and aerobraking.
+
+## Phase 2.4 - eccentric capture and Mars aerobraking
+- Capture draws the model eccentricity and uses Kepler anomaly timing. Orbit scale is consistent locally and the camera frames apoapsis.
+- Mars offers keeping capture orbit, chemical lowering or 1-12 gentle/deep atmospheric dips. Final eccentricity sets the new orbit; vis-viva gives delta-v avoided versus an engine reaching the same orbit. Chemical lowering spends reserve; aerodynamic savings earn a labelled game-model science efficiency bonus. Excess heat damages an instrument.
+- Tests: historical regressions and all-mission interactive smoke pass; zero console errors. Reduced-motion remains supported for flyby cinema.
+- Assumptions: dip efficacy and heat budget are game models; aerobraking occurs after capture, never removes capture delta-v. Next: Phase 3 landing types.

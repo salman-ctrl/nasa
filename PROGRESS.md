@@ -154,3 +154,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Added NASA Voyager/Juno/Cassini reference viewer with original-geometry credits and toon overrides. Source modal stacking and return to brief/report are tested.
 - Route summary warns when dates extrapolate the JPL Table 1 validity range.
 - Tests: full model/physics/all-mission smoke passes; targeted source UI plus actual Juno/Cassini decode/view/close and Voyager flight pass with zero errors. Next: live validation table.
+
+## Phase 5.4 - live model validation
+- Sources now runs six historical/solver checks in the browser and displays model values, reference values, tolerances and PASS/FAIL.
+- Optional four-seed optimizer check runs the same safe Jupiter-capture acceptance target as Node, with visible per-seed results.
+- Tests: all six live browser rows pass; models, EDL, historical regressions and all-mission smoke pass with zero errors.
+- Phase 5 complete using the authorized DONKI/New Horizons availability fallbacks above. Next: phone layout, shortcuts, loading and README.

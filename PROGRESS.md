@@ -129,3 +129,10 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Real GM/radius and mean orbital radii come from JPL; circular coplanar orbits and phase zero are explicitly labelled assumptions. Lambert and Kepler propagation reuse the main engine; moon flybys compute safe periapsis and powered mismatch. Tour delta-v spends reserve, science and final capture orbit update.
 - Tests: model test finds a feasible Saturn tour and verifies endpoint propagation; browser auto-tunes and flies that tour to report. Full regressions and all-mission smoke pass with zero errors.
 - Default Jovian tour uses outer Ganymede/Callisto; adding all four moons may require difficult alignments. Next: persistent career and tech.
+
+## Phase 4.5 - career, reputation and tech
+- Added persistent Moon-Mars-Jupiter-Saturn-Neptune career unlocks. Best stars determine reputation without repeat farming; reputation raises budgets and unlocks autonomy, a 6 m dish, aerobraking and ion TCM. Free play retains every mission/tech.
+- Every localStorage access is guarded; malformed saves are sanitized. Career can be continued from the brief.
+- Ion TCM uses 3000 s Isp, 50 mN, 2500 W and requires sufficient flight time. Only the 100 m/s cruise correction allowance uses ion; impulsive capture/flyby/landing remain chemical. This avoids treating low thrust as an instantaneous capture burn.
+- Tests: engineering/development/tour tests, physics/EDL regressions and all-mission browser smoke pass, zero errors. Added career-lock UI assertion for the next cumulative smoke.
+- Phase 4 implemented; tech budgets, unlock thresholds and ion hardware are game models. Next: NASA data snapshots and assets.

@@ -166,7 +166,7 @@ tailwind.config={theme:{extend:{
       </div>
       <button id="btnSchool" class="btn primary">New here? Flight school (60 s) →</button>
     </div>
-    <label class="block mt-4 font-bold">Crew <select id="crewCount" class="btn"><option value="1">1 player</option><option value="2">2 players</option><option value="3">3 players</option><option value="4">4 players</option></select></label>
+    <label class="block mt-4 font-bold">Mode <select id="playMode" class="btn"><option value="free">Free play</option><option value="career">Career</option></select></label><p id="careerStatus" class="text-xs text-muted mt-2"></p><label class="block mt-4 font-bold">Crew <select id="crewCount" class="btn"><option value="1">1 player</option><option value="2">2 players</option><option value="3">3 players</option><option value="4">4 players</option></select></label>
     <h2 class="font-extrabold mt-5 text-sm uppercase tracking-[.08em] text-muted">Missions</h2>
     <div id="missions" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2"></div>
     <h2 class="font-extrabold mt-5 text-sm uppercase tracking-[.08em] text-muted">Legendary routes: can you beat the original planners?</h2>
@@ -409,6 +409,7 @@ const COMMS={
   hga15:{name:'1.5 m dish',D:1.5,mass:15,cost:12,tx:60},
   hga3:{name:'3 m dish',D:3,mass:40,cost:25,tx:100},
   hga4:{name:'4 m dish',D:4,mass:105,cost:45,tx:120}};
+COMMS.hga6={name:'6 m dish',D:6,mass:240,cost:90,tx:180};
 const INSTR={
   cam:{name:'Camera',mass:25,pw:20,cost:25,data:8,img:1,val:{moon:3,mars:3,jupiter:2,saturn:3,neptune:2}},
   spec:{name:'Imaging spectrometer',mass:30,pw:25,cost:35,data:4,img:1,val:{moon:2,mars:3,jupiter:2,saturn:3,neptune:2}},
@@ -440,12 +441,14 @@ function compute(c,mods){
   const insts=c.inst.filter(id=>id!==mods.lost).map(id=>Object.assign({id},INSTR[id]));
   const landing=LANDING_TYPES[c.missionType||'orbiter'],site=LANDING_SITES[c.mission]?.find(s=>s.id===c.site)||LANDING_SITES[c.mission]?.[0];
   const autonomy=AUTONOMY[c.autonomy||'ground'];
-  const dry=B.mass+P.mass+A.mass+insts.reduce((s,i)=>s+i.mass,0)+(c.vault?VAULT.mass:0)+landing.mass+autonomy.mass;
+  const ion=c.propulsion==='ion';
+  const dry=B.mass+P.mass+A.mass+insts.reduce((s,i)=>s+i.mass,0)+(c.vault?VAULT.mass:0)+landing.mass+autonomy.mass+(ion?35:0);
   const margin=c.margin/100,dvNom=(R.dvSc+landing.dv*(c.mission==='moon'?1.5:1))/1000,dv=dvNom*(1+margin);
-  const ratio=Math.exp(dv*1000/(ISP*G0)),prop=dry*(ratio-1),wet=dry+prop;               // Tsiolkovsky
+  const ionDv=ion?100*(1+margin):0,ionDays=ion?dry*ionDv/.05/DAY:0,ionReady=R.tof>=ionDays;
+  const ratio=Math.exp((dv*1000-ionDv)/(ISP*G0)+ionDv/(3000*G0)),prop=dry*(ratio-1),wet=dry+prop;
   const cap=R.ok?capacity(L,R.c3):0;
   const pAvail=P.kind==='solar'?P.p1/(M.sunDist*M.sunDist)*0.85:P.p;                    // inverse square
-  const base=B.load+A.tx,iLoad=insts.reduce((s,i)=>s+i.pw,0),alive=pAvail>=base;
+  const base=B.load+A.tx+(ion?2500:0),iLoad=insts.reduce((s,i)=>s+i.pw,0),alive=pAvail>=base;
   const duty=!alive?0:iLoad?clamp((pAvail-base)/iLoad,0,1):1;
   const passes=Math.max(1,c.passes-(mods.passCut||0));
   const rate=Math.min(6000,300*A.D*A.D/(M.earthDist*M.earthDist));                      // kbps ∝ D²/d²
@@ -460,13 +463,13 @@ function compute(c,mods){
   const tofY=R.tof/365.25,lifeY=M.life/12*lifeMul;
   const ops=(12+4*passes)*(tofY+lifeY);
   const hw=L.cost+B.cost+P.cost+A.cost+insts.reduce((s,i)=>s+i.cost,0)+(c.vault?VAULT.cost:0)+landing.cost;
-  const cost=hw+ops+development(c).cost+autonomy.cost+(mods.extraCost||0),budget=M.budget*(mods.budgetMul||1);
-  const launchOK=R.ok&&wet<=cap,crashed=!!R.crash;
+  const cost=hw+ops+development(c).cost+autonomy.cost+(ion?45:0)+(mods.extraCost||0),budget=M.budget*(mods.budgetMul||1)*(c.career?1+Math.min(.5,career.reputation*.05):1);
+  const launchOK=R.ok&&wet<=cap&&ionReady,crashed=!!R.crash;
   let sci=10*insts.reduce((s,i)=>s+i.val[M.id]*(i.img?imgMul:1),0)*duty*dataFrac*lifeFrac*(mods.sciMul||1);
   if(c.missionType&&c.missionType!=='orbiter')sci*=site?.bonus||1;
   sci+=(mods.tourScience||0)*duty*dataFrac;if(mods.landingCrash)sci=0;
   if(!launchOK||!alive||crashed)sci=0;
-  return{M,R,L,B,P,A,insts,dry,dv,dvNom,margin,prop,wet,cap,pAvail,base,iLoad,alive,duty,passes,rate,down,gen,dataFrac,lifeFrac,short,tofY,lifeY,ops,hw,cost,budget,sci,launchOK,crashed}}
+  return{M,R,L,B,P,A,insts,dry,dv,dvNom,margin,prop,wet,cap,pAvail,base,iLoad,alive,duty,passes,rate,down,gen,dataFrac,lifeFrac,short,tofY,lifeY,ops,hw,cost,budget,sci,launchOK,crashed,ionDays,ionReady}}
 
 /* =====================================================================
    3. SOUND (synthesized with Web Audio, no files)
@@ -800,6 +803,13 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();des.d=clamp(des.d*Math.ex
    ===================================================================== */
 const STEPS=['Brief','Design','Development','Route','Launch','Cruise','Landing','Operations','Report'];
 const ROLES=['Mission Lead','Propulsion','Science','Power & Comms'];
+const CAREER_ORDER=['moon','mars','jupiter','saturn','neptune'];
+let career={reputation:0,best:{}};try{const saved=JSON.parse(localStorage.getItem('geodesic-career-v1')||'null');if(saved&&saved.best){for(const id of CAREER_ORDER)career.best[id]=clamp(Math.floor(+saved.best[id]||0),0,3);career.reputation=Object.values(career.best).reduce((a,b)=>a+b,0)}}catch{}
+function careerUnlocked(id){const i=CAREER_ORDER.indexOf(id);return i<=0||(career.best[CAREER_ORDER[i-1]]||0)>0}
+function techUnlocked(id){return !cfg?.career||career.reputation>=({autonomy:1,dish:2,aero:3,advanced:4,ion:5}[id]||0)}
+function awardCareer(id,stars){career.best[id]=Math.max(career.best[id]||0,stars);career.reputation=Object.values(career.best).reduce((a,b)=>a+b,0);try{localStorage.setItem('geodesic-career-v1',JSON.stringify(career))}catch{}renderCareer()}
+function renderCareer(){const enabled=$('playMode').value==='career';$('careerStatus').textContent=`Reputation ${career.reputation}; budget bonus ${fmt(Math.min(.5,career.reputation*.05)*100)}%. Tech: autonomy 1, dish 2, aerobraking 3, advanced autonomy 4, ion TCM 5 reputation. ${enabled?'Complete each world to unlock the next.':'All missions and tech available in free play.'}`;document.querySelectorAll('[data-m]').forEach(b=>b.disabled=enabled&&!careerUnlocked(b.dataset.m))}
+$('playMode').onchange=renderCareer;
 let team={players:1,role:-1,signs:[false,false,false,false],changes:[0,0,0,0]};
 const roleFor=k=>({launcher:1,bus:1,margin:1,vault:1,power:3,comm:3,passes:3,inst:2,missionType:2,site:2}[k]??0);
 const canRole=i=>team.players===1||team.role===i;
@@ -818,7 +828,7 @@ function setPhase(p){phase=p;renderTeam();const map={brief:0,design:1,developmen
   $('steps').innerHTML=STEPS.map((s,k)=>{if(legend&&(k===1||k===2||k===6||k===7))return'';return`<li class="step ${k===i?'on':k<i?'done':''}">${k<i?'✓ ':''}${s}</li>`}).join('');
   $('panel').hidden=$('review').hidden=p!=='design';$('rpanel').hidden=$('rsum').hidden=p!=='route';$('kpis').hidden=!(p==='design'||(p==='route'&&!legend));
   $('hud').hidden=!(p==='cruise'||p==='ops');$('hint').hidden=!(p==='design'||p==='brief'||p==='cruise'||p==='route');tutShow()}
-function defaults(id){return{mission:id,schedule:'standard',autonomy:'ground',startJD:jdOf(2026,1,1),devConfirmed:false,missionType:'orbiter',site:LANDING_SITES[id]?.[0].id,launcher:'med',bus:'M',power:'solarM',comm:'hga15',passes:1,inst:['cam','spec'],vault:false,margin:10,route:null,rr:null}}
+function defaults(id){return{mission:id,career:$('playMode').value==='career',propulsion:'chemical',schedule:'standard',autonomy:'ground',startJD:jdOf(2026,1,1),devConfirmed:false,missionType:'orbiter',site:LANDING_SITES[id]?.[0].id,launcher:'med',bus:'M',power:'solarM',comm:'hga15',passes:1,inst:['cam','spec'],vault:false,margin:10,route:null,rr:null}}
 const JD_MIN=jdOf(2026,1,1),JD_MAX=jdOf(2040,12,31);
 function jdBounds(){return legend?{lo:histRR.jds[0]-1200,hi:histRR.jds[0]+1200}:{lo:Math.max(JD_MIN,(cfg?.startJD||JD_MIN)+(cfg?development(cfg).days:0)),hi:JD_MAX}}
 function evalCfgRoute(){const r=cfg.route;cfg.rr=evalRoute(r.seq,r.jd0,r.tofs,!legend);return cfg.rr}
@@ -868,7 +878,8 @@ function renderPanel(){const M=MISSIONS[cfg.mission],B=BUS[cfg.bus],R=routeInfo(
   h+=group('Mission type','missionType',Object.entries(LANDING_TYPES).map(([id,t])=>[id,t.name,`${t.mass} kg / $${t.cost}M`,id!=='orbiter'&&!LANDING_SITES[cfg.mission]]),'Landing hardware and surface bonuses are game models. Surface missions are available at the Moon and Mars.');
   if(cfg.missionType!=='orbiter'&&LANDING_SITES[cfg.mission]){h+=group('Landing site','site',LANDING_SITES[cfg.mission].map(s=>[s.id,s.name,`${s.risk} / science x${s.bonus} (game model)`]));const site=LANDING_SITES[cfg.mission].find(s=>s.id===cfg.site)||LANDING_SITES[cfg.mission][0];h+=`<p class="text-xs text-muted">${site.fact} <a href="${site.url}" target="_blank" rel="noopener" class="underline">NASA site facts</a></p>`}
 
-  h+=group('Onboard autonomy','autonomy',Object.entries(AUTONOMY).map(([id,a])=>[id,a.name,`${a.mass} kg / $${a.cost}M`]),'More autonomy reduces science lost while commands travel from Earth.');
+  h+=group('Cruise propulsion','propulsion',[['chemical','Chemical TCM','320 s Isp'],['ion','Ion cruise TCM','3000 s / 2500 W / 50 mN',!techUnlocked('ion')]],'Ion saves cruise correction fuel; capture and flyby burns remain chemical. Low thrust sets a minimum flight time.');
+  h+=group('Onboard autonomy','autonomy',Object.entries(AUTONOMY).map(([id,a])=>[id,a.name,`${a.mass} kg / $${a.cost}M`,id==='guarded'&&!techUnlocked('autonomy')||id==='advanced'&&!techUnlocked('advanced')]),'More autonomy reduces science lost while commands travel from Earth.');
   h+=group('Launch vehicle','launcher',Object.entries(LAUNCHERS).map(([id,L])=>[id,L.name,`${L.note} · $${L.cost}M · ${R.ok?fmt(capacity(L,R.c3))+' kg':'—'}`]),M.helio?`Capacity at the current route's launch energy (C3 ${fmt(R.c3,0)}). Flybys lower C3 in the next step.`:'');
   h+=group('Spacecraft bus','bus',Object.entries(BUS).map(([id,b])=>[id,b.name,`${b.slots} slots · ${b.mass} kg · ${b.load} W · $${b.cost}M`]));
   h+=group('Power','power',Object.entries(POWER).map(([id,p])=>[id,p.name,p.kind==='solar'?`${fmt(p.p1)} W at 1 AU · ${p.mass} kg · $${p.cost}M`:`${p.p} W anywhere · ${p.mass} kg · $${p.cost}M`]),'Sunlight at '+M.targetName+': '+(M.sunDist===1?'same as Earth':`1/${fmt(M.sunDist**2,0)} of Earth`)+'.');
@@ -888,6 +899,7 @@ function renderPanel(){const M=MISSIONS[cfg.mission],B=BUS[cfg.bus],R=routeInfo(
   $('c-vault').onchange=e=>{if(!canRole(1))return;recordRole(1);cfg.vault=e.target.checked;say(cfg.vault?'Radiation vault installed':'Radiation vault removed');onDesign()}}
 function onDesign(rebuild=true){res=compute(cfg);if(rebuild){renderPanel();rebuildModels()}else{$('o-pass').textContent=cfg.passes+'/day';$('o-mar').textContent=cfg.margin+'%'}updateDesignUI()}
 function designChecks(r){const M=r.M,C=[];const ck=(st,t)=>C.push(`<div class="chk ${st}"><i>${st==='ok'?'✓':st==='bad'?'✕':'!'}</i><span>${t}</span></div>`);
+  if(!r.ionReady)ck('bad',`Ion corrections need at least ${fmt(r.ionDays,1)} flight days at 50 mN.`);
   ck(r.launchOK?'ok':'bad',!r.R.ok?'No valid trajectory yet':r.launchOK?`Launcher lifts ${fmt(r.wet)} kg to C3 ${fmt(r.R.c3,0)} (limit ${fmt(r.cap)} kg)`:`Too heavy: ${fmt(r.wet)} kg, but the ${r.L.name.toLowerCase()} lifts only ${fmt(r.cap)} kg to C3 ${fmt(r.R.c3,0)}`);
   ck(!r.alive?'bad':r.duty<1?'warn':'ok',!r.alive?`Power fails at ${M.targetName}: ${fmt(r.pAvail)} W < ${fmt(r.base)} W for bus + radio`:r.duty<1?`Instruments run only ${fmt(r.duty*100)}% of the time (${fmt(r.pAvail)} W available)`:`Power covers everything: ${fmt(r.pAvail)} W available`);
   ck(r.dataFrac<.5?'bad':r.dataFrac<1?'warn':'ok',r.dataFrac<1?`Downlink bottleneck: only ${fmt(r.dataFrac*100)}% of the science value reaches Earth`:`All science data reaches Earth (${fmt(r.rate,r.rate<10?1:0)} kbps link)`);
@@ -900,12 +912,12 @@ function updateDesignUI(){const r=res,M=r.M;updateKPIs();$('checks').innerHTML=d
   $('sciTxt').textContent=`${fmt(r.sci)} / ${M.goal}`;$('sciBar').style.width=clamp(r.sci/M.goal*100,0,100)+'%';$('sciBar').className=r.sci>=M.goal?'bg-ok':'bg-warn';$('missionTag').textContent=M.name;
   $('btnNext').textContent=M.helio?'Plan the route →':'Launch mission ▲';
   $('reviewNote').textContent=M.helio?`Rocket and propellant numbers use the current route (${cfg.route.seq.length>2?routeName(cfg.route.seq):'flying direct'}). Gravity assists in the next step can change everything.`:'Predictions assume a calm cruise. Space rarely is: keep margins for surprises.'}
-function startMission(id){resetTeam();legend=null;histRR=null;cfg=defaults(id);if(MISSIONS[id].helio)initDirectRoute(MISSIONS[id].target);startDesign()}
+function startMission(id){if($('playMode').value==='career'&&!careerUnlocked(id)){say('Complete the previous career mission first.');return}resetTeam();legend=null;histRR=null;cfg=defaults(id);if(MISSIONS[id].helio)initDirectRoute(MISSIONS[id].target);startDesign()}
 function startDesign(){$('brief').hidden=true;$('report').hidden=true;active=earth;onDesign();setPhase('design');resetLaunchScene();
   shot({tx:STAND.x,ty:5.4,tz:STAND.z,d:clamp(craftStand.userData.span*1.9,15,30),pitch:.26});autoSpin=true;say(`${MISSIONS[cfg.mission].name}: design your spacecraft`)}
 $('btnBack').onclick=()=>goBrief();
 $('btnNext').onclick=()=>{if(!cfg.devConfirmed){openDevelopment();return}if(MISSIONS[cfg.mission].helio){startRoute();tutEvent('route')}else doLaunch()};
-function goBrief(){legend=null;setPhase('brief');$('brief').hidden=false;$('report').hidden=true;active=earth;resetLaunchScene();shot({tx:-20,ty:12,tz:-40,d:120,pitch:.12});say('Choose a mission to begin')}
+function goBrief(){renderCareer();legend=null;setPhase('brief');$('brief').hidden=false;$('report').hidden=true;active=earth;resetLaunchScene();shot({tx:-20,ty:12,tz:-40,d:120,pitch:.12});say('Choose a mission to begin')}
 
 /* =====================================================================
    10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune
@@ -1075,7 +1087,7 @@ function drawCaptureOrbit(){const cap=SYS.capture;if(cap.line){dyn.remove(cap.li
 function aeroPlan(){const dips=+$('aeroDips').value,depth=+$('aeroDepth').value,e=Math.max(.1,.9*Math.exp(-dips*depth*.12)),p=PH.mars,heat=dips*depth**2*.12;
   const dv=Math.sqrt(p.mu*(1+.9)/p.rCap)-Math.sqrt(p.mu*(1+e)/p.rCap);return{dips,depth,e,heat,dv}}
 function aeroReadout(){const a=aeroPlan();$('aeroReadout').textContent=`${a.dips} dips; final eccentricity ${fmt(a.e,2)}, heat ${fmt(a.heat,2)} / 1.0; avoids ${fmt(a.dv/1000,3)} km/s of engine orbit-lowering burns. Above heat limit damages an instrument.`}
-function openAerobraking(){paused=true;$('aeroModal').hidden=false;aeroReadout()}
+function openAerobraking(){if(!techUnlocked('aero'))return;paused=true;$('aeroModal').hidden=false;aeroReadout()}
 function finishAerobraking(mode){if($('aeroModal').hidden)return;const a=aeroPlan();if(mode!=='keep'){SYS.capture.e=a.e;drawCaptureOrbit();if(mode==='chemical'){mods.dvUse=(mods.dvUse||0)+a.dv/cfg.rr.dvSc;triggerBurn(a.dv)}else{mods.aeroSaved=a.dv;mods.sciMul=(mods.sciMul||1)*(1+Math.min(.1,a.dv/10000));if(a.heat>1&&cfg.inst.length)mods.lost=cfg.inst[0]}
     mods.aero=`${mode==='chemical'?'Engine orbit lowering':'Aerobraking'}: eccentricity ${fmt(a.e,2)}, ${a.dips} atmosphere dips, heat ${fmt(a.heat,2)}. ${mode==='chemical'?'Spent':'Avoided'} ${fmt(a.dv/1000,3)} km/s versus the same final orbit; ${mode==='aero'&&a.heat>1?'instrument heat damage':'instruments safe'}.`}
   res=compute(cfg,mods);$('aeroModal').hidden=true;paused=false}
@@ -1316,7 +1328,7 @@ let lastReport=null;
 function showReport(kind){$('environmentHud').hidden=true;setPhase('report');$('hud').hidden=true;
   const stat=(v,l)=>`<div class="bg-paper2 rounded-lg p-2.5"><b class="block text-lg font-extrabold tabular-nums">${v}</b><span class="text-[11px] text-muted font-semibold">${l}</span></div>`;
   const bar=(l,f,col)=>`<div><div class="flex justify-between text-[11.5px] font-bold"><span>${l}</span><span>${fmt(clamp(f,0,1)*100)}%</span></div><div class="bar mt-1"><i style="width:${clamp(f,0,1)*100}%;background:${col}"></i></div></div>`;
-  const rr=cfg.rr,L=[];if(mods.tour)L.push(mods.tour);if(mods.commands)L.push('Commands: '+mods.commands.join('; '));if(!legend)L.push('Development: '+SCHEDULES[cfg.schedule||'standard'].name+', '+development(cfg).days+' days; ready '+fmtDate(jdBounds().lo)+'.');if(!legend)L.push('Team contributions: '+ROLES.map((r,i)=>`${r} (Player ${i%team.players+1}): ${team.changes[i]} decisions, ${team.signs[i]?'signed':'unsigned'}`).join('; '));if(mods.landing)L.push(mods.landing);if(mods.aero)L.push(mods.aero);if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
+  const rr=cfg.rr,L=[];if(cfg.propulsion==='ion')L.push('Ion propulsion handles only the 100 m/s cruise correction allowance at 3000 s Isp and 50 mN; impulsive capture and flyby burns remain chemical. Required thrust time: '+fmt(compute(cfg).ionDays,1)+' days.');if(mods.tour)L.push(mods.tour);if(mods.commands)L.push('Commands: '+mods.commands.join('; '));if(!legend)L.push('Development: '+SCHEDULES[cfg.schedule||'standard'].name+', '+development(cfg).days+' days; ready '+fmtDate(jdBounds().lo)+'.');if(!legend)L.push('Team contributions: '+ROLES.map((r,i)=>`${r} (Player ${i%team.players+1}): ${team.changes[i]} decisions, ${team.signs[i]?'signed':'unsigned'}`).join('; '));if(mods.landing)L.push(mods.landing);if(mods.aero)L.push(mods.aero);if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
   const routeBlock=()=>{if(!rr||!rr.ok)return'';const fs=fuelStats(rr);return`<div class="p-3 rounded-lg bg-paper2 border border-line">
      <div class="flex flex-wrap items-center gap-1 text-[12px] font-bold">${rr.seq.map(id=>`<span class="inline-flex items-center gap-1"><i class="dot" style="background:${PH[id].col}"></i>${PH[id].name}</span>`).join('<span class="text-muted">→</span>')}</div>
      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11.5px]"><div><b class="block text-[15px]">${fmt(rr.c3,1)}</b><span class="text-muted">C3 km²/s²</span></div><div><b class="block text-[15px] text-ok">+${fmt(rr.free/1000,2)}</b><span class="text-muted">km/s free speed</span></div><div><b class="block text-[15px]">${fmt(rr.dvEq/1000,2)}</b><span class="text-muted">km/s total Δv</span></div><div><b class="block text-[15px] ${fs.saved>0?'text-ok':'text-warn'}">${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,2)} t</b><span class="text-muted">propellant vs ${legend?'history':'direct'}</span></div></div></div>`};
@@ -1351,7 +1363,7 @@ function showReport(kind){$('environmentHud').hidden=true;setPhase('report');$('
   if(mods.landingCrash){title='Landing impact';n=0}$('repTitle').textContent=title;$('repTag').textContent=tag;$('repRoute').innerHTML=routeBlock();
   $('repLessons').innerHTML=L.map(t=>`<li class="flex gap-2"><span class="text-flame font-extrabold">›</span><span>${t}</span></li>`).join('');
   $('repReal').textContent=real;$('report').hidden=false;$('btnRedesign').textContent=legend?'Tune the route again':'Redesign this mission';
-  n>=2?SFX.chime():SFX.sad();lastReport={title,n,tag}}
+  if(!legend&&cfg.career)awardCareer(cfg.mission,n);n>=2?SFX.chime():SFX.sad();lastReport={title,n,tag}}
 $('btnRedesign').onclick=()=>{$('report').hidden=true;if(legend){rebuildModels();startRoute()}else startDesign()};
 $('btnNew').onclick=()=>goBrief();
 $('btnShare').onclick=()=>{const c=makePatch(),a=document.createElement('a');a.download=`geodesic-${(legend?legend.id:cfg.mission)}-patch.png`;a.href=c.toDataURL('image/png');a.click();say('Mission patch saved')};
@@ -1402,7 +1414,7 @@ $('coachNext').onclick=()=>{tut++;tutShow()};$('coachSkip').onclick=()=>{tutOn=f
    15. LOOP
    ===================================================================== */
 let last=performance.now(),TS=1;
-cfg=defaults('mars');rebuildModels();setPhase('brief');Object.assign(des,{tx:-20,ty:12,tz:-40,d:120,yaw:.75,pitch:.12});Object.assign(rig,des);rig.d=160;setView('einstein');
+cfg=defaults('mars');renderCareer();rebuildModels();setPhase('brief');Object.assign(des,{tx:-20,ty:12,tz:-40,d:120,yaw:.75,pitch:.12});Object.assign(rig,des);rig.d=160;setView('einstein');
 function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='brief')des.yaw+=dt*.04;
   if(phase==='design'){if(craftStand)craftStand.rotation.y+=dt*.35;if(autoSpin)des.yaw+=dt*.05}

@@ -29,8 +29,8 @@
 
 ## Phase status
 
-- Step 0: tests authored; browser installation and smoke verification in progress.
-- Phase 1: not started.
+- Step 0: done; Node and browser checks pass.
+- Phase 1: partial; 1.1 complete, 1.2 overlay implemented, aiming and ghost race next.
 - Phase 2: not started.
 - Phase 3: not started.
 - Phase 4: not started.
@@ -45,3 +45,13 @@
 - No performance claim until measured in a real browser.
 
 Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Browser used installed Chrome; zero console/page errors. All missions reached reports, including the default Neptune design's expected payload failure. Next: Phase 1 cinematic and aiming.
+
+## Phase 1.1 - planet-frame cinematic
+
+- Implemented planet-centred scene, rotating toon planet, local gravity well, true relative radius, automatic return and Skip.
+- Hyperbolic anomaly solves Kepler time over a seven-second replay (two seconds for reduced motion); camera follows the encounter without changing physical path scale.
+- Replaced mean-speed flyby radius inversion with a common-periapsis powered conic solve. This keeps actual incoming/outgoing Lambert vectors aligned even when their planet-frame speeds differ.
+- Tests: historical regressions and 3/4 optimizer seeds pass; added conic periapsis and incoming/outgoing asymptote checks. Full browser smoke passes with zero errors.
+- Preliminary split overlay distinguishes ideal unpowered speed conservation from route powered corrections. Planet momentum uses wet mass and GM/G; fuller source listing follows in Phase 5.
+- Limitation: planar patched conics; craft and glow are enlarged for visibility. Hardware 60 fps is unverified; headless software rendering is a functional check.
+- Next: finalize split diagram, then aiming.

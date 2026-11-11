@@ -5,5 +5,11 @@
     "juno": "3D Models/Juno (A)/Juno (A).glb",
     "cassini": "3D Models/Cassini Assembly/Cassini Assembly.glb"
   },
-  "newHorizons": "No official GLB in inspected repository tree; STL printing parts only. Procedural fallback."
+  "newHorizons": "No official GLB in inspected repository tree; STL printing parts only. Procedural fallback.",
+  "retrievedAt": "2026-11-11T12:12:50.410911+00:00",
+  "sha256": {
+    "cassini.glb": "517e5811877259b8ff756a6dff0ed0d21b3ac0f7ca892061f26a755cdb266cf7",
+    "juno.glb": "13f6bd48ff830a1890b21ef6e0182bb1043926feebb77af9733e7374b050367a",
+    "voyager.glb": "7cf8eefb5a0fca9e4e1b0d1e51c37433124169183e5dbfd2d8034af902311821"
+  }
 }

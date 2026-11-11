@@ -1,6 +1,6 @@
 # Geodesic night build
 
-## Step 0 ? baseline and verification
+## Step 0 - baseline and verification
 
 - Baseline already committed as c5c5a64; origin/main is configured and pushed.
 - Read AGENTS.md, CODEX_PROMPT.md and the single game file before edits.
@@ -11,31 +11,31 @@
 
 | Section | Lines | Main functions |
 | --- | --- | --- |
-| 1. ASTRODYNAMICS ENGINE | 202?296 | ephemPos, ephemVel, stC, stS, lambert, propagate, captureDv, evalRoute, hohmann, hohT, tofRange, routeScore, tuneDE, polish |
-| 2. MISSION DATA (simplified engineering models, real physics laws) | 297?396 | routeInfo, compute |
-| 3. SOUND (synthesized with Web Audio, no files) | 397?420 |  |
-| 4. RENDERER + TOON LOOK (cel shading with ink outlines) | 421?465 | OUT, smoothGeo, toonMat, mk, ctex, sprite, planetTex |
-| 5. EARTH SCENE: desert spaceport at golden hour | 466?521 |  |
-| 6. BUILDERS: spacecraft and rockets assembled from the player's choices | 522?614 | buildCraft, buildRocket, rebuildModels, emit, stepParticles, puff, burst, stepFireball |
-| 7. SPACE SCENE: real solar system (JPL elements) or Earth-Moon system | 615?707 | buildGrid, labelSprite, planetMesh, clearDyn, setWells, setupHelio, drawRoute, placeHelio, helioState, kepler, setupMoon, moonCraft, placeMoon |
-| 8. CAMERA RIG (drag rotate, scroll zoom, smooth) | 708?722 | fit, placeCam |
-| 9. GAME STATE + DESIGN UI | 723?817 | setPhase, defaults, jdBounds, evalCfgRoute, initDirectRoute, updateKPIs, group, renderPanel, onDesign, designChecks, updateDesignUI, startMission, startDesign, goBrief |
-| 10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune | 818?917 | startLegend, startRoute, legDefault, renderRoutePanel, routeChanged, refreshRoute, drawPork, renderFlybys, fuelStats, renderSummary, navButtons, wireNav, autoTune |
-| 11. LAUNCH (success or a dramatic failure) | 918?957 | resetLaunchScene, doLaunch, legendResult, banner, updateLaunch, updateFail, endLaunch |
-| 12. CRUISE: replay the real trajectory, flyby cinematics, events | 958?1055 | startHelioCruise, startMoonCruise, buildSpeeds, setView, hudRows, updateViewFX, updateCruise, updateMoonCruise, crashFlyby, arrive, updateOps, pickEvents, openEvent |
-| 13. REPORT + SHAREABLE MISSION PATCH | 1056?1120 | showReport, makePatch |
-| 14. FLIGHT SCHOOL (guided tutorial) | 1121?1144 | tutShow, tutEvent |
-| 15. LOOP | 1145?1165 | frame |
+| 1. ASTRODYNAMICS ENGINE | 202-296 | ephemPos, ephemVel, stC, stS, lambert, propagate, captureDv, evalRoute, hohmann, hohT, tofRange, routeScore, tuneDE, polish |
+| 2. MISSION DATA (simplified engineering models, real physics laws) | 297-396 | routeInfo, compute |
+| 3. SOUND (synthesized with Web Audio, no files) | 397-420 |  |
+| 4. RENDERER + TOON LOOK (cel shading with ink outlines) | 421-465 | OUT, smoothGeo, toonMat, mk, ctex, sprite, planetTex |
+| 5. EARTH SCENE: desert spaceport at golden hour | 466-521 |  |
+| 6. BUILDERS: spacecraft and rockets assembled from the player's choices | 522-614 | buildCraft, buildRocket, rebuildModels, emit, stepParticles, puff, burst, stepFireball |
+| 7. SPACE SCENE: real solar system (JPL elements) or Earth-Moon system | 615-707 | buildGrid, labelSprite, planetMesh, clearDyn, setWells, setupHelio, drawRoute, placeHelio, helioState, kepler, setupMoon, moonCraft, placeMoon |
+| 8. CAMERA RIG (drag rotate, scroll zoom, smooth) | 708-722 | fit, placeCam |
+| 9. GAME STATE + DESIGN UI | 723-817 | setPhase, defaults, jdBounds, evalCfgRoute, initDirectRoute, updateKPIs, group, renderPanel, onDesign, designChecks, updateDesignUI, startMission, startDesign, goBrief |
+| 10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune | 818-917 | startLegend, startRoute, legDefault, renderRoutePanel, routeChanged, refreshRoute, drawPork, renderFlybys, fuelStats, renderSummary, navButtons, wireNav, autoTune |
+| 11. LAUNCH (success or a dramatic failure) | 918-957 | resetLaunchScene, doLaunch, legendResult, banner, updateLaunch, updateFail, endLaunch |
+| 12. CRUISE: replay the real trajectory, flyby cinematics, events | 958-1055 | startHelioCruise, startMoonCruise, buildSpeeds, setView, hudRows, updateViewFX, updateCruise, updateMoonCruise, crashFlyby, arrive, updateOps, pickEvents, openEvent |
+| 13. REPORT + SHAREABLE MISSION PATCH | 1056-1120 | showReport, makePatch |
+| 14. FLIGHT SCHOOL (guided tutorial) | 1121-1144 | tutShow, tutEvent |
+| 15. LOOP | 1145-1165 | frame |
 
 ## Phase status
 
 - Step 0: done; Node and browser checks pass.
-- Phase 1: partial; 1.1 complete, 1.2 overlay implemented, aiming and ghost race next.
-- Phase 2: not started.
-- Phase 3: not started.
-- Phase 4: not started.
-- Phase 5: not started.
-- Phase 6: not started.
+- Phase 1: done - conic cinema, split vectors, aiming, historical ghost.
+- Phase 2: done - chase, burns, eclipse/conjunction, capture/aerobraking.
+- Phase 3: done - mission types, sites, EDL and surface operations.
+- Phase 4: done - roles, schedule, delayed commands, moon tours and career.
+- Phase 5: done with documented DONKI/New Horizons availability fallbacks.
+- Phase 6: done - phone sheets, touch/keyboard, loading, reduced motion and README.
 
 ## Decisions and known limits
 
@@ -172,3 +172,45 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Audit fixed optimizer candidate ranking: it now scores rounded playable dates and prefers safe candidates. Jupiter smoke uses a repeatable seed and rejects unsafe routes.
 - Tests: all physics/EDL/engineering checks and full mission smoke pass. Combined mobile/reference suite passes, including actual career award persistence across reload, next-mission unlock, NASA assets, moon tour, aiming and Skip; zero browser errors.
 - Next: README, final source-map refresh and final verification under a GitHub Pages-style subpath.
+
+## Final audit and verification
+
+- Added README with run/test instructions, gameplay, sources, credits, Pages hosting and explicit model limits.
+- Final polish corrects powered deceleration/rejoin plume vectors, animates aerobraking eccentricity one dip at a time and gives surface vehicles visible wheels/landing legs.
+- Scene cleanup now disposes removed geometry, materials and owned label textures while preserving shared outline/grid/NASA resources. Particle and model vertex limits remain bounded.
+- Current automated checks: historical and conic geometry; three safe optimizer seeds out of four; <1 km Lambert residuals; aiming changes and crash aim; guided Moon/Mars soft landings; engineering/autonomy/schedule; feasible local moon tour.
+- Browser coverage: all missions and Voyager 2 to reports, four-role launch gate, development selection, career save/reload/unlock, source/model table, NASA models, aiming changes, skip, chase/burn, Saturn tour, phone sheets and no horizontal overflow.
+- Final expanded smoke also exercises Mars aerobraking, reduced motion and a /geodesic project subpath. Result recorded below after completion.
+- Remaining external availability tasks: obtain real DONKI records when the migrated service responds; obtain an official assembled New Horizons GLB if one becomes available. Current fallbacks are labelled and playable.
+- Performance limitation: 60 fps remains a hardware target; headless SwiftShader is not representative of a mid-range laptop GPU. No hardware frame-rate claim is made.
+
+## Current section map
+
+| Section | Lines | Main functions |
+| --- | --- | --- |
+| 1. ASTRODYNAMICS ENGINE | 253-386 | ephemPos, ephemVel, stC, stS, lambert, propagate, captureDv, evalRoute, hohmann, hohT, tofRange, routeScore, tuneDE, polish, flybyConic, conicPoint, aimSolution, shadowCylinder, conjunctionAngle, captureOrbitPoint, stepEDL, moonState, evalMoonTour |
+| 2. MISSION DATA (simplified engineering models, real physics laws) | 387-501 | development, routeInfo, compute |
+| 3. SOUND (synthesized with Web Audio, no files) | 502-525 |  |
+| 4. RENDERER + TOON LOOK (cel shading with ink outlines) | 526-570 | OUT, smoothGeo, toonMat, mk, ctex, sprite, planetTex |
+| 5. EARTH SCENE: desert spaceport at golden hour | 571-626 |  |
+| 6. BUILDERS: spacecraft and rockets assembled from the player's choices | 627-729 | disposeTree, loadNasaModel, buildCraft, buildRocket, rebuildModels, emit, stepParticles, puff, burst, stepFireball |
+| 7. SPACE SCENE: real solar system (JPL elements) or Earth-Moon system | 730-823 | buildGrid, labelSprite, planetMesh, clearDyn, setWells, setupHelio, drawRoute, placeHelio, helioState, kepler, setupMoon, moonCraft, placeMoon |
+| 8. CAMERA RIG (drag rotate, scroll zoom, smooth) | 824-842 | fit, placeCam |
+| 9. GAME STATE + DESIGN UI | 843-963 | careerUnlocked, techUnlocked, awardCareer, renderCareer, resetTeam, openDevelopment, renderDevelopment, recordRole, renderTeam, setPhase, defaults, jdBounds, evalCfgRoute, initDirectRoute, updateKPIs, group, renderPanel, onDesign, designChecks, updateDesignUI, startMission, startDesign, goBrief |
+| 10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune | 964-1064 | startLegend, startRoute, legDefault, renderRoutePanel, routeChanged, refreshRoute, drawPork, renderFlybys, fuelStats, renderSummary, navButtons, wireNav, autoTune |
+| 11. LAUNCH (success or a dramatic failure) | 1065-1104 | resetLaunchScene, doLaunch, legendResult, banner, updateLaunch, updateFail, endLaunch |
+| 12. CRUISE: replay the real trajectory, flyby cinematics, events | 1105-1110 |  |
+| 12.1. PLANET-FRAME FLYBY CINEMATIC | 1111-1195 | triggerBurn, updateBurn, updateEnvironment, setupCaptureOrbit, drawCaptureOrbit, aeroPlan, aeroReadout, openAerobraking, finishAerobraking, toggleCamera, updateChase, startCinematic, drawFlyVectors, updateCinematic, endCinematic |
+| 12.2. B-PLANE AIMING (PLANAR SLICE) | 1196-1224 | openAim, changeAim, drawAim, confirmAim |
+| 12.3. ENTRY, DESCENT AND SURFACE OPERATIONS | 1225-1248 | startLanding, deployChute, updateLanding, startSurface, updateSurface |
+| 12.4. OPTIONAL PLANETARY MOON TOUR | 1249-1371 | openMoonTour, renderMoonTour, tuneMoonTour, drawMoonTour, flyMoonTour, updateMoonTour, skipMoonTour, startHelioCruise, startMoonCruise, buildSpeeds, setView, hudRows, updateViewFX, updateCruise, updateMoonCruise, crashFlyby, arrive, updateOps, loadFlareSnapshot, reloadFlareSnapshot, pickEvents, openEvent, commandDelay |
+| 13. REPORT + SHAREABLE MISSION PATCH | 1372-1436 | showReport, makePatch |
+| 13.1. SOURCES, ASSUMPTIONS AND NASA REFERENCE VIEWER | 1437-1474 | openSources |
+| 13.2. LIVE MODEL CHECKS | 1475-1485 | runModelChecks, renderModelChecks, previewReference |
+| 14. FLIGHT SCHOOL (guided tutorial) | 1486-1508 | tutShow, tutEvent |
+| 14.1. KEYBOARD HELP AND ACCESSIBLE CONTROLS | 1509-1521 | showShortcuts, closeShortcuts |
+| 15. LOOP | 1522-1542 | frame |
+
+Final expanded smoke PASS: all five missions completed flight/operations to reports, Voyager 2 NASA model/aiming/cinematic/chase passed, Saturn tour and Mars aerobraking passed, career persisted across reload, all 390 px sheets and reference viewers worked under /geodesic with reduced motion, and a separate overloaded lunar launch failed as expected. Zero console/page errors. Final targeted Voyager/chase recheck also passed. README and phase status are current; all authorized implementation phases are complete with the two documented data availability fallbacks and hardware frame-rate measurement outstanding.
+
+Final model decision: chase uses the articulated engineering spacecraft so Sun/Earth pointing remains functional; NASA Voyager geometry is retained in map/flyby views and all downloaded models in the reference viewer.

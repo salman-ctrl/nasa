@@ -3,16 +3,18 @@ import {chromium} from 'playwright';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const server=createServer(async(req,res)=>{try{if(req.url==='/favicon.ico'){res.writeHead(204);return res.end()}const file=new URL('..'+(req.url==='/'?'/index.html':req.url),import.meta.url);const data=await readFile(file);res.setHeader('Content-Type',file.pathname.endsWith('.html')?'text/html':file.pathname.endsWith('.json')?'application/json':'application/octet-stream');res.end(data)}catch{res.writeHead(404);res.end()}});
+const basePath=process.env.TEST_BASE_PATH||'';
+const server=createServer(async(req,res)=>{try{if(basePath&&req.url.startsWith(basePath+'/'))req.url=req.url.slice(basePath.length);if(req.url==='/favicon.ico'){res.writeHead(204);return res.end()}const file=new URL('..'+(req.url==='/'?'/index.html':req.url),import.meta.url);const data=await readFile(file);res.setHeader('Content-Type',file.pathname.endsWith('.html')?'text/html':file.pathname.endsWith('.json')?'application/json':'application/octet-stream');res.end(data)}catch{res.writeHead(404);res.end()}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true,args:['--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
-const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];
+const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];if(process.env.TEST_REDUCED)await page.emulateMedia({reducedMotion:'reduce'});
 page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.waitForFunction(()=>window.__game,{timeout:60000});
+await page.goto(`http://127.0.0.1:${server.address().port}${basePath}/`);await page.waitForFunction(()=>window.__game,{timeout:60000});
 assert.ok(await page.evaluate(()=>window.__game.modelChecks().every(r=>r.pass)));await page.keyboard.press('?');assert.equal(await page.locator('#shortcutModal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#shortcutModal').isVisible(),false);await page.evaluate(()=>window.__game.sources());assert.equal(await page.locator('[data-check="true"]').count(),6);assert.ok(await page.locator('#sourcesContent').getByText('Game model',{exact:true}).count()>5);await page.locator('#sourcesClose').click();
 if(process.env.TEST_REFERENCE){for(const name of ['juno','cassini']){assert.equal(await page.evaluate(name=>window.__game.reference(name),name),true);assert.equal(await page.locator('#modelReference').isVisible(),true);await page.locator('#modelReferenceClose').click();await page.locator('#sourcesClose').click()}}
 if(process.env.TEST_MOBILE){await page.setViewportSize({width:390,height:844});await page.evaluate(()=>window.__game.start('moon'));assert.equal(await page.locator('#panel').isVisible(),true);assert.equal(await page.locator('#review').isVisible(),false);await page.locator('#mobileTools [data-sheet="review"]').click();assert.equal(await page.locator('#review').isVisible(),true);await page.locator('#mobileTools [data-sheet="crew"]').click();assert.equal(await page.locator('#teamBar').isVisible(),true);await page.locator('#mobileTools [data-sheet="parts"]').click();await page.screenshot({path:fileURLToPath(new URL('./phone.png',import.meta.url))});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.setViewportSize({width:1440,height:900})}
+await page.evaluate(()=>{window.__game.start('moon');window.__game.development()});await page.locator('[data-schedule="crunch"]').click();await page.locator('#developmentGo').click();assert.equal(await page.evaluate(()=>window.__game.cfg().devConfirmed),true);assert.equal(await page.evaluate(()=>window.__game.cfg().schedule),'crunch');
 await page.evaluate(()=>{const g=window.__game;g.crew(4);g.start('moon');g.role(2)});
 assert.equal(await page.locator('[data-k="launcher"]').first().isVisible(),false);
 await page.evaluate(()=>window.__game.launch());assert.equal(await page.evaluate(()=>window.__game.phase),'design');
@@ -20,7 +22,7 @@ await page.evaluate(()=>window.__game.crew(1));
 await page.locator('#btnBack').click();await page.locator('#playMode').selectOption('career');assert.equal(await page.locator('[data-m="mars"]').isDisabled(),true);await page.locator('#playMode').selectOption('free');
 for(const id of (process.env.SMOKE_MISSIONS?.split(',')||['moon','mars','jupiter','saturn','neptune','voyager2'])){
 if(id==='moon')await page.locator('#playMode').selectOption('career');
-await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:true,missionType:id==='moon'?'lander':id==='mars'?'rover':'orbiter'});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
+await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:id==='jupiter',missionType:id==='moon'?'lander':id==='mars'?'rover':'orbiter'});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
 if(id==='voyager2')assert.equal(await page.evaluate(async()=>!!await window.__game.nasaModel('voyager')),true);
 if(id==='jupiter')await page.evaluate(()=>window.__game.tune(7));if(id==='jupiter')assert.equal(await page.evaluate(()=>window.__game.rr().crash),0);
 await page.evaluate(()=>{window.__game.signAll();window.__game.launch()});
@@ -28,19 +30,21 @@ if(id==='saturn'){await page.waitForFunction(()=>{window.__game.choose(0);return
 if(id==='mars'){await page.waitForFunction(()=>window.__game.phase==='cruise');await page.evaluate(()=>{window.__game.ts(0);window.__game.camera();window.__game.burn(420)});await page.waitForTimeout(150);assert.equal(await page.locator('#burnHud').isVisible(),true);await page.evaluate(()=>{window.__game.camera();window.__game.ts(40)})}
 if(id==='voyager2'){
  await page.waitForFunction(()=>window.__game.aim(),{timeout:30000});
- const before=await page.evaluate(()=>window.__game.aim());assert.ok(before.correction<1e-6);
+ await page.evaluate(()=>window.__game.camera());await page.waitForTimeout(100);await page.evaluate(()=>window.__game.camera());const before=await page.evaluate(()=>window.__game.aim());assert.ok(before.correction<1e-6);
  const changed=await page.evaluate(()=>{window.__game.aimSet(.95);return window.__game.aim()});
  assert.ok(changed.correction>1&&changed.miss>before.miss+1000);
  await page.evaluate(()=>{window.__game.aimSet(1);window.__game.aimConfirm()});
- await page.waitForFunction(()=>window.__game.flyby(),{timeout:30000});
+ await page.waitForFunction(()=>{if(window.__game.flyby()){window.__game.ts(0);return true}return false},{timeout:30000});
  await page.evaluate(()=>window.__game.ts(0));
  assert.ok((await page.evaluate(()=>window.__game.flyby())).rpR>9);assert.equal(await page.locator('#report').isVisible(),false);
  await page.screenshot({path:fileURLToPath(new URL('./flyby.png',import.meta.url))});
  await page.evaluate(()=>{window.__game.skipFly();window.__game.ts(40)});
 }
 const result=await page.evaluate(()=>window.__game.runTo('report'));assert.equal(result,'report',id);
-if(id==='moon'||id==='mars')assert.notEqual(await page.locator('#repTitle').textContent(),'Landing impact');console.log(id,await page.locator('#repTitle').textContent());assert.ok(await page.evaluate(()=>window.__game.patch())>1000);if(id==='moon'){assert.ok(await page.evaluate(()=>JSON.parse(localStorage.getItem('geodesic-career-v1')).best.moon)>=1);await page.reload();await page.waitForFunction(()=>window.__game);await page.locator('#playMode').selectOption('career');assert.equal(await page.locator('[data-m="mars"]').isDisabled(),false);await page.locator('#playMode').selectOption('free');}
+if(id==='neptune')assert.ok(!(await page.locator('#repTitle').textContent()).includes('Launch failure'));if(id==='moon'||id==='mars')assert.notEqual(await page.locator('#repTitle').textContent(),'Landing impact');console.log(id,await page.locator('#repTitle').textContent());assert.ok(await page.evaluate(()=>window.__game.patch())>1000);if(id==='moon'){assert.ok(await page.evaluate(()=>JSON.parse(localStorage.getItem('geodesic-career-v1')).best.moon)>=1);await page.reload();await page.waitForFunction(()=>window.__game);await page.locator('#playMode').selectOption('career');assert.equal(await page.locator('[data-m="mars"]').isDisabled(),false);await page.locator('#playMode').selectOption('free');}
 }
+if(process.env.TEST_AERO){await page.evaluate(()=>{const g=window.__game;g.start('mars');g.set({launcher:'super',bus:'S',power:'solarL',comm:'hga15',inst:['cam'],missionType:'orbiter'});g.signAll();g.ts(40);g.launch()});await page.waitForFunction(()=>{window.__game.choose(0);return !document.getElementById('aeroModal').hidden},{timeout:30000});await page.locator('#aeroGo').click();assert.equal(await page.evaluate(()=>window.__game.runTo('report')),'report');assert.ok((await page.locator('#repLessons').textContent()).includes('Aerobraking'));console.log('Mars aerobraking passed')}
+await page.evaluate(()=>{const g=window.__game;g.start('moon');g.set({launcher:'med',bus:'L',power:'solarXL',comm:'hga6',inst:['cam','spec','radar','thermal','laser','mag'],vault:true,margin:30,missionType:'rover'});g.signAll();g.ts(40)});assert.equal(await page.evaluate(()=>window.__game.compute().launchOK),false);await page.evaluate(()=>window.__game.launch());assert.equal(await page.evaluate(()=>window.__game.runTo('report')),'report');assert.ok((await page.locator('#repTitle').textContent()).includes('Launch failure'));console.log('Overloaded launch failure passed');
 assert.deepEqual(errors,[]);console.log('Smoke passed: all missions and Voyager 2, zero console errors');
 }finally{await browser.close();await new Promise(r=>server.close(r))}
 

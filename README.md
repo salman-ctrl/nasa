@@ -24,13 +24,15 @@ For GitHub Pages, serve the repository root on the `main` branch. Local asset/da
 
 The persistent tank display shows kilograms and the percentage remaining in the main chemical/xenon tanks, plus a separate attitude-control reserve. Red means the remaining planned burns require more propellant than is available. Every executed manoeuvre removes mass with the rocket equation at the current wet mass; descent and corrections use the same onboard supply. There are no free tank refills at arrival or landing. Ion corrections have their own xenon load and specific impulse.
 
-Ascent has separate equivalent booster/core tanks. Their loads and overload-dependent mass-flow governor are game values calibrated to the existing launcher capacity curve, rather than NASA stage specifications. An overloaded vehicle reaches a computed fuel cutoff, then coasts ballistically under altitude-dependent Earth gravity. Ascent scale and replay time are compressed; atmospheric drag is omitted.
+Ascent has separate equivalent booster/core tanks. Their loads, fixed mass flow and burn durations are game values calibrated to the existing launcher capacity curve, rather than NASA stage specifications. Overloading leaves less delivered velocity at the same burnout time, then the vehicle coasts ballistically under altitude-dependent Earth gravity. Ascent scale and replay time are compressed; atmospheric drag is omitted. The camera follows the rocket without position lag, and successful stage burnout is labelled nominal in the report.
 
 An empty spacecraft tank causes engine cutoff, not an explosion. Capture uses delivered impulse and vis-viva energy: a bound shortfall leaves a more eccentric orbit, while an unbound result flies past the target and reports **Lost to deep space**. Partial aiming/rejoin corrections retain only their delivered impulse and propagate the resulting path to the moving next body. A miss coasts past; an intersection with the safety radius produces an impact. Landing thrust stops when the shared tank runs dry and descent continues under gravity and, on Mars, drag. Impact effects occur only at collision/touchdown.
 
 Pointing, wheel desaturation, aiming and anomaly recovery spend a separate attitude reserve. Exhaustion causes a slow tumble, loss of Earth pointing and zero downlink, with a **Loss of attitude control** report. The 1% dry-mass reserve, equivalent 60 s control-thruster Isp and pointing duty are game assumptions. Control rows show scalar equivalent impulse, not net translational delta-v.
 
 The report lists planned and delivered m/s, kilograms spent, tank identity and the depletion moment for every burn. Descent's planned value is its design allowance; delivered impulse is integrated from actual thrust. Burn execution times and encounter-tracking fade are illustrative; orbit energy, mass loss and partial-correction propagation use the physics model.
+
+Capture is a visible burn before Landing or Operations. Guided descent uses fixed 0.05 s physics steps and constant engine force divided by current mass. Its replay lasts approximately 32 seconds at normal speed, with time to enable guidance or use the descent controls. The Moon has no parachute; simplified Mars entry follows a shallow game flight path before vertical descent. Sources labels the entry geometry and replay timing as approximations.
 
 Career best stars unlock Moon → Mars → Jupiter → Saturn → Neptune, budget bonuses, a larger dish, autonomy, aerobraking and ion cruise corrections. Storage is optional; blocked or malformed local storage does not prevent free play.
 
@@ -44,7 +46,9 @@ Install development tools with `npm install --prefix tests`, then run:
 node tests/astro.test.mjs
 node tests/models.test.mjs
 node tests/fuel.test.mjs
+node tests/edl-fixed.test.mjs
 node tests/fuel-browser.test.mjs
+node tests/real-player.mjs
 node tests/smoke.mjs
 ```
 
@@ -53,6 +57,8 @@ Smoke uses installed Chrome by default. Set `PW_CHANNEL=chromium` after installi
 Historical checks cover Voyager 1 Jupiter periapsis, New Horizons launch C3/Jupiter periapsis, Voyager 2 safety/Saturn periapsis, and Lambert propagation residuals below 1 km. Four fixed optimizer seeds must produce at least three safe Jupiter capture routes below 6 km/s. Additional checks cover conic geometry, aiming, EDL, engineering, development and moon tours. Browser smoke drives all missions and Voyager 2 through reports with zero console or page errors; a separate overloaded lunar vehicle exercises launch failure.
 
 Fuel tests verify rocket-equation conservation and frame partitioning, wet-mass xenon sizing, independent attitude storage, burnout timing, ballistic impact, capture energy and empty-tank lunar free fall. Browser cases inject reproducible shortages through `window.__game` and cover overloaded launch, partial capture, aim/rejoin miss, correction impact, descent exhaustion and attitude depletion. They assert that coasting failures do not explode and that collision effects occur only on impact. The existing Voyager smoke deliberately moves the aim point out and back; this now consumes real reserve and can correctly miss Saturn.
+
+The real-player suite clicks actual UI buttons at ts(1), without phase-skipping or mission-configuration hooks. It plays Moon lander, Mars rover, Jupiter, Saturn and Voyager 2, records phase order, checks the rocket's projected bounds every rendered launch frame, verifies the descent control window, and fails on console/page errors. Screenshots and phase evidence are saved to `tests/shots/`. Use `REAL_MISSIONS=moon:lander,mars:rover` for a subset, or `moon:overload,moon:crash` for launch-failure and unassisted-impact UI cases. Fixed-step EDL tests require identical terminal states at ts 1, 6 and 40 across several frame rates.
 
 ## Data and credits
 
@@ -70,6 +76,6 @@ The in-game **Sources & Assumptions** panel links individual mission and landing
 
 This is an educational game, not flight-navigation software. Planet positions are projected into the ecliptic and Table 1 is intended for 1800–2050; routes outside that range are labelled extrapolations. Transfers are two-body Lambert arcs without deep-space manoeuvre searches, multi-revolution optimisation or full N-body dynamics. Powered flybys join conics at a common periapsis. Aiming is a planar B-plane slice, with a charged correction that rejoins the planned leg.
 
-Map scale is compressed; chase/flyby geometry preserves local planet/path scale while spacecraft are enlarged. Chase uses the articulated engineering craft so panels and antenna can track their targets; the NASA Voyager geometry appears in map and flyby views. The spacetime grid is an illustration and clock offsets use a weak-field approximation. Moon tours use circular orbits with assumed phase zero, not moon ephemerides. EDL is vertical, with a simple exponential atmosphere; aerobraking efficacy, thermal damage, battery endurance, hardware/resource values and campaign rewards are game models. Ion propulsion applies only to cruise corrections with a finite-thrust time constraint; capture and powered flyby impulses remain chemical.
+Map scale is compressed; chase/flyby geometry preserves local planet/path scale while spacecraft are enlarged. Chase uses the articulated engineering craft so panels and antenna can track their targets; the NASA Voyager geometry appears in map and flyby views. The spacetime grid is an illustration and clock offsets use a weak-field approximation. Moon tours use circular orbits with assumed phase zero, not moon ephemerides. EDL uses a fixed shallow Mars entry followed by vertical descent, with a simple exponential atmosphere; aerobraking efficacy, thermal damage, battery endurance, hardware/resource values and campaign rewards are game models. Ion propulsion applies only to cruise corrections with a finite-thrust time constraint; capture and powered flyby impulses remain chemical.
 
 The scene targets 60 fps with bounded particles, geometry reuse, cached NASA models and disposal on scene changes. Headless software-rendered checks verify functionality; performance on a representative mid-range laptop still needs direct measurement. See `PROGRESS.md` for the detailed phase log and remaining data availability tasks.

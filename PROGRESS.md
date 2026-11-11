@@ -288,3 +288,11 @@ Live propellant final verification PASS: node tests/fuel.test.mjs, node tests/mo
 - The unassisted lunar playthrough reached impact before a useful control window; corrected the replay timing and guidance in Group 3.
 - Mars used the entire 5.5 km/s entry speed vertically, leaving heavier wet vehicles too little braking distance even with fuel. Corrected the explicitly labelled game entry geometry to a shallow 12-degree path until slowed, then vertical powered descent. The normal-speed Mars rover now lands successfully.
 - The guidance button retained its enabled caption on a later mission; reset it on every landing.
+- Jupiter's actual Skip tour button did nothing: all three static moon-tour buttons lacked click handlers, leaving Operations paused. Connected Skip tour, Auto-tune and Fly tour to their existing functions. Verified at ts(1): Auto-tune updates the plan, Skip tour resumes Jupiter Operations, and Fly tour starts Saturn's execution and reaches Report. The old hook-driven smoke suite bypassed these dead controls.
+
+## Real-player bug fixes - Group 4: tour controls and UI test coverage
+- Added assertions for every launch status, both cruise pause messages, lunar instructions/controls, and all giant-planet phase transitions. Jupiter uses actual flyby-add and Auto-tune buttons; no route/configuration or phase-skip mutation hooks are used.
+- README describes fixed-flow overload, force-limited guidance, fixed EDL physics, normal-speed replay and the real-player test command.
+- All physics/engineering/fuel/failure-browser tests pass. Expanded existing smoke passes all missions, Voyager 2, mobile, reduced motion, Mars aerobraking and /geodesic subpath with zero console errors. Its deliberate Voyager aim oscillation still produces the expected fuel-limited miss; the ts(1) UI run uses the historical aim without that artificial oscillation.
+- After the tour-button fix, normal-speed Moon, Mars, Jupiter and Saturn all reach Report with zero console/page errors. Launch framing passes on all 530 / 537 / 544 / 541 sampled frames. Descent takes 32.19 s (Moon) / 32.33 s (Mars); capture is visible for 4.37 / 3.42 / 5.84 / 3.65 s respectively. Screenshots in tests/shots/.
+- Next: complete the Voyager 2 ts(1) UI playthrough and save the final five-mission evidence manifest.

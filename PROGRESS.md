@@ -105,3 +105,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Successful landers/rovers enter a toon terrain diorama, compressed day/night cycle, rover drive path and science ticker. Failed landing reports correctly award zero stars/science.
 - Tests: guided Mars touchdown 1.40 m/s, Moon 1.04 m/s; historical regressions and all-mission smoke pass. Smoke now flies a Moon lander and Mars rover to report and rejects impacts. Zero browser errors.
 - Assumptions: 1D vertical descent, drag coefficient/area, initial entry state, guidance, heat and terrain are game models; no claim of mission-grade EDL. Atmosphere source: NASA/JPL Mars Telecommunications document (descanso.jpl.nasa.gov/propagation/mars/MarsPub020318.pdf). Next: team roles.
+
+## Phase 4.1 - hot-seat crew roles
+- Brief supports 1-4 players. Mission Lead, Propulsion, Science and Power/Comms are assigned round-robin; role handoff changes editable panels, while resource bars remain shared.
+- Hardware and route changes invalidate sign-offs. All four roles must approve launch (one-player mode can sign all roles together). Report records role owner, decisions and approval.
+- Tests: browser checks four-player Science cannot see launcher choices and unsigned launch stays in Design; all missions, physics and EDL checks pass with zero errors.
+- Decision: local hot-seat roles are a device handoff, with no identity or network authentication. Next: development schedule.

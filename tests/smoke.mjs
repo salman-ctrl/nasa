@@ -10,10 +10,14 @@ try{
 const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];
 page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.waitForFunction(()=>window.__game,{timeout:60000});
+await page.evaluate(()=>{const g=window.__game;g.crew(4);g.start('moon');g.role(2)});
+assert.equal(await page.locator('[data-k="launcher"]').first().isVisible(),false);
+await page.evaluate(()=>window.__game.launch());assert.equal(await page.evaluate(()=>window.__game.phase),'design');
+await page.evaluate(()=>window.__game.crew(1));
 for(const id of ['moon','mars','jupiter','saturn','neptune','voyager2']){
 await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:true,missionType:id==='moon'?'lander':id==='mars'?'rover':'orbiter'});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
 if(id==='jupiter')await page.evaluate(()=>window.__game.tune());
-await page.evaluate(()=>window.__game.launch());
+await page.evaluate(()=>{window.__game.signAll();window.__game.launch()});
 if(id==='mars'){await page.waitForFunction(()=>window.__game.phase==='cruise');await page.evaluate(()=>{window.__game.ts(0);window.__game.camera();window.__game.burn(420)});await page.waitForTimeout(150);assert.equal(await page.locator('#burnHud').isVisible(),true);await page.evaluate(()=>{window.__game.camera();window.__game.ts(40)})}
 if(id==='voyager2'){
  await page.waitForFunction(()=>window.__game.aim(),{timeout:30000});

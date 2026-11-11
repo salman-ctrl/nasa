@@ -229,3 +229,10 @@ Final model decision: chase uses the articulated engineering spacecraft so Sun/E
 - Stage dry/fuel loads, overload governor and compressed replay are explicit game models, not specifications of named rockets. Report logs stage delivered impulse and burnout time/altitude.
 - Tests: heavier overload unit case burns out at 45 s versus 90 s, lower in altitude; ballistic impact passes. New browser tests check animated kg depletion against rocket-equation mass loss, low warning, overload cutoff/impact and report moment. Full engineering/astro and existing all-mission smoke pass. Zero console/page errors.
 - Next: physically resolve partial capture and correction burns, then landing/attitude failures.
+
+## Live propellant - Part 3: physical capture and correction failures
+- Partial capture now uses delivered impulse and vis-viva specific energy. Bound shortfalls keep the computed eccentric orbit; unbound cases coast on a planet-frame hyperbola, recede with an illustrative tracking fade and report Lost to deep space plus m/s shortfall. No fuel-triggered explosion.
+- A partially delivered aiming impulse changes the actual aim factor. Powered flyby/rejoin delivery then determines the actual outgoing velocity. Short rejoin corrections are propagated to the moving next planet; closest approach with patched-conic focusing decides impact versus miss. Only an intersection triggers an impact flash/explosion.
+- Skip cannot bypass powered flyby or rejoin fuel. Optional moon tours cannot award science after an undelivered manoeuvre; incomplete orbit lowering retains the actually achieved bound orbit.
+- Tests: positive/bound-short/unbound capture energy; partial velocity interpolation; a propagated intercept and a miss. Browser cases exercise capture exhaustion with partial delivery, aim/rejoin shortfall and explicit correction shortfall, alongside gauge and overload cases. Zero console/page errors.
+- Existing engineering/astro/all-mission smoke passes. Its deliberate Voyager aim oscillation now correctly spends fuel and can miss Saturn rather than silently refilling the tank. Next: shared-fuel landing cutoff and attitude-control exhaustion.

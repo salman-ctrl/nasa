@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8').replace(/\r/g,'');
 const engine=html.slice(html.indexOf('const G0='),html.indexOf('/* =====================================================================\n   2. MISSION DATA'));
 const helpers=html.slice(html.indexOf('const TAU='),html.indexOf('/* =====================================================================\n   1. ASTRODYNAMICS'));
-export const astro=vm.runInNewContext(helpers+'\n'+engine+'\n({evalRoute,jdOf,ephemPos,lambert,propagate,tuneDE,MU_SUN,DAY,PH,flybyConic,conicPoint,aimSolution,shadowCylinder,conjunctionAngle})');
+export const astro=vm.runInNewContext(helpers+'\n'+engine+'\n({evalRoute,jdOf,ephemPos,lambert,propagate,tuneDE,MU_SUN,DAY,PH,flybyConic,conicPoint,aimSolution,shadowCylinder,conjunctionAngle,stepEDL,captureOrbitPoint})');
 const {evalRoute,jdOf,ephemPos,lambert,propagate,tuneDE,MU_SUN,DAY}=astro;
 const historical=(seq,dates)=>{const j=dates.map(d=>jdOf(...d));return evalRoute(seq,j[0],j.slice(1).map((v,i)=>v-j[i]),false)};
 const near=(v,w,t)=>assert.ok(Math.abs(v-w)<=t,`${v} expected ${w} Â± ${t}`);
@@ -37,6 +37,13 @@ assert.equal(astro.shadowCylinder([5,0],[10,0],1),false);
 assert.equal(astro.shadowCylinder([20,2],[10,0],1),false);
 near(astro.conjunctionAngle([-10,0],[10,0]),0,1e-10);
 near(astro.conjunctionAngle([20,0],[10,0]),Math.PI,1e-10);
+for(const moon of [false,true]){
+ const s={moon,h:moon?40000:125000,v:moon?800:5500,mass:700,fuel:moon?2400:1600,heat:0,t:0,engine:false,chute:false};
+ for(let i=0;i<30000&&s.h>0;i++){if(s.v<550&&s.h<14000)s.chute=!moon;if(s.h<s.v*s.v/(2*(25-(moon?1.62:3.71)))*1.4+500)s.engine=true;astro.stepEDL(s,.05)}
+ console.log('EDL guidance',moon?'Moon':'Mars',s.v,s.heat,s.fuel);assert.ok(s.h<=0&&s.v<3&&s.heat<20,'guidance achieves soft landing');
+}
+near(Math.hypot(...astro.captureOrbitPoint(1000,.9,0)),1000,1e-6);
+near(Math.hypot(...astro.captureOrbitPoint(1000,.9,.5)),19000,1e-6);
 let wins=0;
 for(const seed of [7,31,101,2026]){const seq=['earth','mars','earth','jupiter'];const t=tuneDE(seq,true,{jdMin:jdOf(2026,1,1),jdMax:jdOf(2040,12,31),seed});const r=evalRoute(seq,t.jd0,t.tofs,true);console.log('Auto-tune',seed,(r.dvEq/1000).toFixed(3),r.crash);if(r.ok&&!r.crash&&r.dvEq<=6000)wins++}
 assert.ok(wins>=3,`${wins}/4 optimizer seeds passed`);

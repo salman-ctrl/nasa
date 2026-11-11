@@ -98,3 +98,10 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - NASA-linked facts cover Jezero, Gale, Utopia, Shackleton rim and Mare Tranquillitatis. Risk and bonus values are explicitly game models.
 - Decision: landers and rovers are limited to Moon/Mars; a gas giant has no solid surface. Other missions retain orbiters and moon tours arrive in Phase 4.
 - Tests: physics and all-mission smoke pass with zero errors. Landing dispatch and interactive EDL are the next feature; current type choices affect engineering and science only.
+
+## Phase 3.3 and 3.4 - EDL and surface operations
+- Added Mars drag integration with rho0=0.020 kg/m3, H=11.1 km, g=3.71 m/s2; Moon uses vacuum and 1.62 m/s2. Physics substeps remain stable under time warp.
+- Players time parachute deployment and ignition, or enable guidance. Fuel impulse is limited; heat and touchdown speed determine soft/hard/crash outcomes and science damage.
+- Successful landers/rovers enter a toon terrain diorama, compressed day/night cycle, rover drive path and science ticker. Failed landing reports correctly award zero stars/science.
+- Tests: guided Mars touchdown 1.40 m/s, Moon 1.04 m/s; historical regressions and all-mission smoke pass. Smoke now flies a Moon lander and Mars rover to report and rejects impacts. Zero browser errors.
+- Assumptions: 1D vertical descent, drag coefficient/area, initial entry state, guidance, heat and terrain are game models; no claim of mission-grade EDL. Atmosphere source: NASA/JPL Mars Telecommunications document (descanso.jpl.nasa.gov/propagation/mars/MarsPub020318.pdf). Next: team roles.

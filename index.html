@@ -144,6 +144,7 @@ tailwind.config={theme:{extend:{
 <div class="flex gap-2 mt-3"><button id="aimReset" class="btn">Aim at plan</button><button id="aimGo" class="btn primary">Confirm aim</button></div>
 </section></div>
 <div id="aeroModal" class="modal" hidden><section class="glass max-w-[500px] w-full p-4"><h2 class="font-extrabold text-lg">Mars orbit lowering</h2><p class="text-xs text-muted">Atmospheric drag lowers apoapsis after capture; it does not replace the capture burn. Dip count and heat are game models.</p><label class="block mt-3">Atmosphere dips <input id="aeroDips" type="range" min="1" max="12" value="4"></label><label>Depth <select id="aeroDepth" class="btn"><option value="1">Gentle</option><option value="2">Deep</option></select></label><p id="aeroReadout" class="text-xs mt-2"></p><div class="flex gap-2 mt-3"><button id="aeroSkip" class="btn">Keep capture orbit</button><button id="aeroChemical" class="btn">Lower with engine</button><button id="aeroGo" class="btn primary">Aerobrake</button></div></section></div>
+<div id="landingModal" class="modal" hidden><section class="glass max-w-[760px] w-full p-4"><h2 class="font-extrabold text-lg">Entry, descent and landing</h2><p class="text-xs text-muted">Deploy a chute below 550 m/s on Mars, then ignite before stopping distance exceeds altitude. The Moon has no atmosphere.</p><canvas id="landingCanvas" width="900" height="400" class="w-full mt-2 rounded-lg"></canvas><p id="landingReadout" class="font-mono text-xs mt-2"></p><div class="flex flex-wrap gap-2 mt-3"><button id="deployChute" class="btn">Deploy parachute</button><button id="igniteDescent" class="btn primary">Ignite descent</button><button id="landingAuto" class="btn">Enable landing guidance</button></div></section></div>
 <!-- tutorial coach -->
 <div id="coach" class="glass fixed z-50 w-[300px] p-3.5 flex flex-col gap-2" hidden>
   <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold tracking-[.12em] uppercase text-flame">Flight school</span><span id="coachN" class="text-[11px] font-bold text-muted"></span></div>
@@ -337,6 +338,9 @@ function aimSolution(rr,f,b){const p=PH[f.id],a=p.mu/f.vin**2,rp=Math.sqrt(a*a+b
 function shadowCylinder(sc,body,radius){const len=nrm(body);if(!len)return false;const dx=sc[0]-body[0],dy=sc[1]-body[1],along=(dx*body[0]+dy*body[1])/len;return along>0&&Math.abs(dx*body[1]-dy*body[0])/len<radius}
 function conjunctionAngle(sc,earth){const line=sub(sc,earth),length=nrm(line)*nrm(earth);return length>1?Math.acos(clamp(-(earth[0]*line[0]+earth[1]*line[1])/length,-1,1)):Math.PI}
 function captureOrbitPoint(rp,e,fraction){const M=(fraction%1)*TAU;let E=M;for(let k=0;k<20;k++)E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));const a=rp/(1-e);return[a*(Math.cos(E)-e),a*Math.sqrt(1-e*e)*Math.sin(E)]}
+function stepEDL(s,dt){const g=s.moon?1.62:3.71,rho=s.moon?0:.020*Math.exp(-Math.max(0,s.h)/11100),area=s.chute?180:15,drag=.5*rho*s.v*s.v*1.5*area/s.mass;
+  const desired=Math.min(80,Math.max(1,Math.sqrt(2*g*Math.max(0,s.h))*.55)),thrust=s.engine&&s.fuel>0?clamp(g+(s.v-desired)*2,0,25):0;
+  s.fuel=Math.max(0,s.fuel-thrust*dt);s.heat+=Math.sqrt(rho)*s.v**3*dt*1e-11;s.v=Math.max(.5,s.v+(g-drag-thrust)*dt);s.h-=s.v*dt;s.t+=dt;return s}
 
 /* =====================================================================
    2. MISSION DATA (simplified engineering models, real physics laws)
@@ -776,10 +780,10 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();des.d=clamp(des.d*Math.ex
 /* =====================================================================
    9. GAME STATE + DESIGN UI
    ===================================================================== */
-const STEPS=['Brief','Design','Route','Launch','Cruise','Operations','Report'];
+const STEPS=['Brief','Design','Route','Launch','Cruise','Landing','Operations','Report'];
 let phase='brief',cfg=null,res=null,mods={},launchRes=null,active=earth,legend=null,histRR=null;
 const say=m=>{$('log').textContent=m};
-function setPhase(p){phase=p;const map={brief:0,design:1,route:2,launch:3,cruise:4,ops:5,report:6};const i=map[p];
+function setPhase(p){phase=p;const map={brief:0,design:1,route:2,launch:3,cruise:4,landing:5,ops:6,report:7};const i=map[p];
   $('steps').innerHTML=STEPS.map((s,k)=>{if(legend&&(k===1||k===5))return'';return`<li class="step ${k===i?'on':k<i?'done':''}">${k<i?'✓ ':''}${s}</li>`}).join('');
   $('panel').hidden=$('review').hidden=p!=='design';$('rpanel').hidden=$('rsum').hidden=p!=='route';$('kpis').hidden=!(p==='design'||(p==='route'&&!legend));
   $('hud').hidden=!(p==='cruise'||p==='ops');$('hint').hidden=!(p==='design'||p==='brief'||p==='cruise'||p==='route');tutShow()}
@@ -978,7 +982,7 @@ let lt=0;
 function resetLaunchScene(){fireball.visible=false;if(rocket){rocket.visible=true;rocket.userData.fail=null;rocket.userData.sep=0;rocket.position.set(PAD.x,3,PAD.z);rocket.rotation.set(0,0,0);rocket.userData.plume.visible=false;
     rocket.userData.boosters.forEach((b,i)=>{b.position.set((b.position.x<0?-1:1)*b.userData.x0,0,0);b.rotation.set(0,0,0);b.userData.vx=0;if(b.userData.plume)b.userData.plume.visible=false})}
   flame.visible=false;smoke.visible=false;pLife.fill(0);sm.forEach(s=>s.age=99);if(craftStand)craftStand.visible=true}
-function doLaunch(){endCinematic();aimState=null;$('aimModal').hidden=true;if(legend){const rr=cfg.rr;const opts=['med','heavy','super'];const dry=600;cfg.launcher=opts.find(id=>capacity(LAUNCHERS[id],rr.c3)>=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)))||'super';rebuildModels()}
+function doLaunch(){surfaceMode=false;edl=null;endCinematic();aimState=null;$('aimModal').hidden=true;if(legend){const rr=cfg.rr;const opts=['med','heavy','super'];const dry=600;cfg.launcher=opts.find(id=>capacity(LAUNCHERS[id],rr.c3)>=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)))||'super';rebuildModels()}
   launchRes=legend?legendResult():compute(cfg);mods={};environmental={eclipse:false,blackout:false,battery:1};active=earth;resetLaunchScene();setPhase('launch');lt=0;craftStand.visible=false;flame.visible=smoke.visible=true;autoSpin=false;
   shot({tx:PAD.x,ty:30,tz:PAD.z,d:140,yaw:.4,pitch:.07});Object.assign(rig,des);rig.d=200;say(`Payload encapsulated on the ${LAUNCHERS[cfg.launcher].name.toLowerCase()}. Countdown.`)}
 function legendResult(){const rr=cfg.rr,L=LAUNCHERS[cfg.launcher],dry=600,wet=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)),cap=capacity(L,rr.c3);return{legend:true,rr,L,dry,wet,cap,launchOK:rr.ok&&wet<=cap,crashed:!!rr.crash,alive:true}}
@@ -1103,6 +1107,29 @@ function endCinematic(){if(!cinematic)return;const correction=cinematic.f.aimSol
 $('skipFly').onclick=endCinematic;
 
 /* ===== 12.2. B-PLANE AIMING (PLANAR SLICE) ===== */
+/* ===== 12.3. ENTRY, DESCENT AND SURFACE OPERATIONS ===== */
+let assistedReplay=false,edl=null,surfaceMode=false,surfaceCraft=null;
+const surfaceScene=new THREE.Scene();surfaceScene.background=new THREE.Color(0x302943);surfaceScene.add(new THREE.AmbientLight(0xaaa0cc,.7));
+const surfaceSun=new THREE.DirectionalLight(0xffe0aa,2);surfaceScene.add(surfaceSun);
+const terrainGroup=new THREE.Group();surfaceScene.add(terrainGroup);
+function startLanding(){setPhase('landing');paused=false;edl={moon:cfg.mission==='moon',h:cfg.mission==='moon'?40000:125000,v:cfg.mission==='moon'?800:5500,mass:res.dry,fuel:LANDING_TYPES[cfg.missionType].dv*(cfg.mission==='moon'?1.5:1),chute:false,engine:false,auto:assistedReplay,heat:0,t:0};$('landingModal').hidden=false;$('deployChute').disabled=edl.moon}
+function deployChute(){if(!edl||edl.moon)return;if(edl.v>550){mods.landing='Parachute torn: deployed above 550 m/s (game limit).';return}edl.chute=true}
+function updateLanding(dt){if(!edl)return;const steps=Math.ceil(dt*30/.05),h=dt*30/Math.max(1,steps);for(let i=0;i<steps&&edl.h>0;i++){if(edl.auto){if(edl.v<550&&edl.h<14000)edl.chute=!edl.moon;const stop=edl.v**2/(2*(25-(edl.moon?1.62:3.71)));if(edl.h<stop*1.4+500)edl.engine=true}stepEDL(edl,h)}
+  const g=$('landingCanvas').getContext('2d'),W=900,H=400;g.fillStyle=edl.moon?'#141b3a':'#673f47';g.fillRect(0,0,W,H);g.fillStyle=edl.moon?'#9e96a6':'#c8643c';g.fillRect(0,355,W,45);
+  const y=clamp(330-edl.h/(edl.moon?40000:125000)*290,30,340);g.fillStyle='#e2b23c';g.fillRect(420,y,60,25);
+  if(edl.heat>.1&&!edl.chute){g.fillStyle='rgba(255,130,50,.6)';g.beginPath();g.ellipse(450,y+25,50,15,0,0,TAU);g.fill()}
+  if(edl.chute){g.strokeStyle='#fbf6ec';g.lineWidth=3;g.beginPath();g.moveTo(420,y);g.lineTo(390,y-75);g.lineTo(510,y-75);g.lineTo(480,y);g.stroke();g.fillStyle='#fbf6ec';g.beginPath();g.arc(450,y-75,60,Math.PI,TAU);g.fill()}
+  if(edl.engine&&edl.fuel>0){g.fillStyle='#ffa24a';g.beginPath();g.moveTo(430,y+25);g.lineTo(450,y+65);g.lineTo(470,y+25);g.fill()}
+  $('landingReadout').textContent=`Altitude ${fmt(Math.max(0,edl.h)/1000,2)} km | descent ${fmt(edl.v,1)} m/s | fuel impulse ${fmt(edl.fuel)} m/s | heat ${fmt(edl.heat,1)} / 20`;
+  if(edl.h<=0){const speed=edl.v,hard=speed>3,crash=speed>15||edl.heat>20;mods.landingCrash=crash;mods.landing=`${LANDING_SITES[cfg.mission].find(s=>s.id===cfg.site)?.name}: ${crash?'crash':hard?'hard landing':'soft landing'} at ${fmt(speed,1)} m/s. Heat ${fmt(edl.heat,1)} / 20 (game limit).`;if(hard&&!crash)mods.sciMul=(mods.sciMul||1)*.6;$('landingModal').hidden=true;edl=null;res=compute(cfg,mods);if(crash)showReport('landing');else startSurface()}}
+$('deployChute').onclick=deployChute;$('igniteDescent').onclick=()=>{if(edl)edl.engine=true};$('landingAuto').onclick=()=>{if(edl)edl.auto=true};
+function startSurface(){surfaceMode=true;setPhase('ops');opsT=0;terrainGroup.traverse(o=>{if(o.geometry)o.geometry.dispose()});terrainGroup.clear();
+  const col=cfg.mission==='moon'?0xa69aa8:0xc8643c,ground=mk(new THREE.CylinderGeometry(18,19,2,48),col,{t:.15});ground.position.y=-1;terrainGroup.add(ground);const random=rng(cfg.site.length*13);
+  const rockGeo=new THREE.IcosahedronGeometry(1,0),rockMat=toonMat(col);for(let i=0;i<35;i++){const rock=new THREE.Mesh(rockGeo,rockMat),angle=random()*TAU,r=3+random()*14;rock.position.set(Math.cos(angle)*r,.2,Math.sin(angle)*r);rock.scale.setScalar(.2+random()*.7);terrainGroup.add(rock)}
+  surfaceCraft=buildCraft(cfg);surfaceCraft.scale.setScalar(.5);surfaceCraft.position.y=1;terrainGroup.add(surfaceCraft);const path=[];for(let i=0;i<=80;i++){const a=i/80*TAU;path.push(new THREE.Vector3(5*Math.cos(a),.03,4*Math.sin(a)))}terrainGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(path),new THREE.LineDashedMaterial({color:0xffe0aa,dashSize:.3,gapSize:.2})));shot({tx:0,ty:1,tz:0,d:35,pitch:.6})}
+function updateSurface(dt){opsT+=dt;surfaceSun.position.set(Math.cos(opsT*.4)*30,Math.sin(opsT*.4)*25,10);surfaceSun.intensity=Math.max(.05,Math.sin(opsT*.4))*2;
+  if(cfg.missionType==='rover'){surfaceCraft.position.set(5*Math.cos(opsT*.3),1,4*Math.sin(opsT*.3));surfaceCraft.rotation.y=-opsT*.3}
+  const f=clamp(opsT/10,0,1);$('hudPhase').textContent='Surface science';$('hudDay').textContent=cfg.site;$('hudBar').style.width=f*100+'%';hudRows([['Science',fmt(res.sci*f)],['Site',cfg.site],['Vehicle',cfg.missionType],['Cycle','Compressed day / night']]);if(f>=1)showReport('ops')}
 let aimState=null,aimPreview=null;
 function openAim(f){paused=true;const p=PH[f.id],b=f.rp*Math.sqrt(1+2*p.mu/(f.rp*f.vin**2));
   aimState={f,b,factor:1,cost:0,solution:aimSolution(cfg.rr,f,b)};
@@ -1194,8 +1221,8 @@ function arrive(){if(!legend)triggerBurn(cr.mode==='moon'?MISSIONS.moon.insertio
   shot({tx:T.position.x,ty:0,tz:T.position.z,d:vR*7,pitch:.32});
   if(!res.alive){banner(`Power failure at ${lr.M.targetName}`,2600);SFX.sad();say(`Only ${fmt(res.pAvail)} W of power: the spacecraft cannot run its radio. Signal lost.`)}
   else if(res.short){banner('Insertion burn short<br><span class="text-xl">propellant ran out: lower-quality orbit</span>',2600);say('Propellant margin was spent on anomalies: degraded orbit')}
-  else{banner(`Orbit insertion<br><span class="text-xl">${fmt(cr.mode==='moon'?lr.M.insertion:cfg.rr.dvCap/1000,2)} km/s burn · captured by ${lr.M.targetName}</span>`,2600);say(`Welcome to ${lr.M.targetName}. Science operations begin`)}setupCaptureOrbit();if(lr.M.id==='mars')openAerobraking()}
-function updateOps(dt){if(paused)return;opsT+=dt;const legendMode=launchRes.legend;
+  else{banner(`Orbit insertion<br><span class="text-xl">${fmt(cr.mode==='moon'?lr.M.insertion:cfg.rr.dvCap/1000,2)} km/s burn · captured by ${lr.M.targetName}</span>`,2600);say(`Welcome to ${lr.M.targetName}. Science operations begin`)}setupCaptureOrbit();if(lr.M.id==='mars'&&cfg.missionType==='orbiter')openAerobraking();else if(cfg.missionType!=='orbiter')startLanding()}
+function updateOps(dt){if(surfaceMode)return updateSurface(dt);if(paused)return;opsT+=dt;const legendMode=launchRes.legend;
   let T,vR;if(cr.mode==='moon'){placeMoon(cr.tof+opsT*.3);T=SYS.moon.m;vR=2.2}else{placeHelio(cr.jdEnd+opsT*.8);const id=cfg.rr.seq[cfg.rr.seq.length-1];T=SYS.bodies[id].m;vR=PH[id].vR}
   const c=T.position;
   if(!legendMode){const jd=cr.mode==='moon'?JD_MIN+cr.tof+opsT*.8:cr.jdEnd+opsT*.8,id=cr.mode==='moon'?'earth':res.M.target,body=ephemPos(id,jd),rad=cr.mode==='moon'?R_MOON:PH[id].rCap,angle=cr.mode==='moon'?SYS.ph+SYS.w*(cr.tof+opsT*.3)*DAY:opsT*1.4;
@@ -1237,7 +1264,7 @@ let lastReport=null;
 function showReport(kind){$('environmentHud').hidden=true;setPhase('report');$('hud').hidden=true;
   const stat=(v,l)=>`<div class="bg-paper2 rounded-lg p-2.5"><b class="block text-lg font-extrabold tabular-nums">${v}</b><span class="text-[11px] text-muted font-semibold">${l}</span></div>`;
   const bar=(l,f,col)=>`<div><div class="flex justify-between text-[11.5px] font-bold"><span>${l}</span><span>${fmt(clamp(f,0,1)*100)}%</span></div><div class="bar mt-1"><i style="width:${clamp(f,0,1)*100}%;background:${col}"></i></div></div>`;
-  const rr=cfg.rr,L=[];if(mods.aero)L.push(mods.aero);if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
+  const rr=cfg.rr,L=[];if(mods.landing)L.push(mods.landing);if(mods.aero)L.push(mods.aero);if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
   const routeBlock=()=>{if(!rr||!rr.ok)return'';const fs=fuelStats(rr);return`<div class="p-3 rounded-lg bg-paper2 border border-line">
      <div class="flex flex-wrap items-center gap-1 text-[12px] font-bold">${rr.seq.map(id=>`<span class="inline-flex items-center gap-1"><i class="dot" style="background:${PH[id].col}"></i>${PH[id].name}</span>`).join('<span class="text-muted">→</span>')}</div>
      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11.5px]"><div><b class="block text-[15px]">${fmt(rr.c3,1)}</b><span class="text-muted">C3 km²/s²</span></div><div><b class="block text-[15px] text-ok">+${fmt(rr.free/1000,2)}</b><span class="text-muted">km/s free speed</span></div><div><b class="block text-[15px]">${fmt(rr.dvEq/1000,2)}</b><span class="text-muted">km/s total Δv</span></div><div><b class="block text-[15px] ${fs.saved>0?'text-ok':'text-warn'}">${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,2)} t</b><span class="text-muted">propellant vs ${legend?'history':'direct'}</span></div></div></div>`};
@@ -1269,7 +1296,7 @@ function showReport(kind){$('environmentHud').hidden=true;setPhase('report');$('
     if(!L.length)L.push('Every subsystem had margin. This is what a balanced mission design looks like.');
     real=M.real}
   $('stars').innerHTML=[0,1,2].map(i=>`<span class="star" style="animation-delay:${.15+i*.18}s;color:${i<n?'#e2b23c':'#d8cdb8'}">★</span>`).join('');
-  $('repTitle').textContent=title;$('repTag').textContent=tag;$('repRoute').innerHTML=routeBlock();
+  if(mods.landingCrash){title='Landing impact';n=0}$('repTitle').textContent=title;$('repTag').textContent=tag;$('repRoute').innerHTML=routeBlock();
   $('repLessons').innerHTML=L.map(t=>`<li class="flex gap-2"><span class="text-flame font-extrabold">›</span><span>${t}</span></li>`).join('');
   $('repReal').textContent=real;$('report').hidden=false;$('btnRedesign').textContent=legend?'Tune the route again':'Redesign this mission';
   n>=2?SFX.chime():SFX.sad();lastReport={title,n,tag}}
@@ -1330,13 +1357,13 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='route'&&SYS){gridMat.uniforms.amp.value+=(1-gridMat.uniforms.amp.value)*Math.min(1,dt*3);if(SYS.craft&&cfg.rr&&cfg.rr.ok){SYS.craft.position.copy(toVis(cfg.rr.P[0].r,.3))}if(SYS.arrS)SYS.arrS.visible=SYS.arrP.visible=false;placeHelio(cfg.rr.ok?cfg.rr.jds[0]:cfg.route.jd0)}
   if(phase==='launch')updateLaunch(dt);
   if(phase==='cruise')updateCruise(dt);
-  if(phase==='ops')updateOps(dt);
-  placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
+  if(phase==='landing')updateLanding(dt);if(phase==='ops')updateOps(dt);
+  placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(surfaceMode&&phase==='ops'?surfaceScene:cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={landing:()=>edl,landingGuidance:()=>{if(edl)edl.auto=true},aerobrake:mode=>finishAerobraking(mode),environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
-  runTo:(ph)=>new Promise(res=>{const t0=performance.now();const iv=setInterval(()=>{if(aimState)confirmAim();if(!$('aeroModal').hidden)finishAerobraking('keep');const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};
+  runTo:(ph)=>new Promise(res=>{assistedReplay=true;const t0=performance.now();const iv=setInterval(()=>{if(edl)edl.auto=true;if(aimState)confirmAim();if(!$('aeroModal').hidden)finishAerobraking('keep');const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);assistedReplay=false;res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};
 </script>
 </body>
 </html>

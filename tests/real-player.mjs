@@ -14,6 +14,7 @@ await page.addInitScript(()=>{window.playAudit={phases:[],projectionErrors:[],la
 await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.waitForFunction(()=>window.__game);await page.evaluate(()=>window.__game.ts(1));
 if(id==='voyager2')await page.locator('[data-l="voyager2"]').click();else{
  await page.locator(`[data-m="${id}"]`).click();await select(page,'launcher',kind==='overload'?'med':'super');await select(page,'bus',kind==='overload'?'L':'S');await select(page,'power',kind==='overload'?'solarXL':id==='moon'||id==='mars'?'solarL':'rtg4');await select(page,'comm',kind==='overload'?'hga6':'hga15');
+ if(kind==='crash')await select(page,'missionType','lander');
  if(kind==='overload'){await select(page,'missionType','rover');await page.locator('#r-mar').focus();await page.keyboard.press('End')}
  if(kind==='lander'||kind==='rover')await select(page,'missionType',kind);
  await page.locator('#btnNext').click();await page.locator('#developmentGo').click();
@@ -24,15 +25,16 @@ const captured=new Set(),deadline=Date.now()+360000;
 while(Date.now()<deadline){const phase=await page.evaluate(()=>window.__game.phase);
  if(!captured.has(phase)){captured.add(phase);await page.screenshot({path:`${shots}/${id}-${kind}-${phase}.png`});console.log(id,kind,phase)}
  if(phase==='report')break;
- if(await page.locator('#evt').isVisible()){const first=page.locator('#evtOpts button').first();if(await first.isEnabled())await first.click();if(await page.locator('#evtGo').isVisible())await page.locator('#evtGo').click()}
+ if(await page.locator('#evt').isVisible()){assert.ok(await page.evaluate(()=>+getComputedStyle(document.getElementById('fuelHud')).zIndex<+getComputedStyle(document.getElementById('evt')).zIndex));const first=page.locator('#evtOpts button').first();if(await first.isEnabled())await first.click();if(await page.locator('#evtGo').isVisible())await page.locator('#evtGo').click()}
  if(await page.locator('#aimModal').isVisible())await page.locator('#aimGo').click();
  if(await page.locator('#aeroModal').isVisible())await page.locator('#aeroSkip').click();
  if(await page.locator('#tourModal').isVisible())await page.locator('#tourSkip').click();
- if(phase==='landing'&&await page.locator('#landingAuto').isVisible()&&!(await page.evaluate(()=>window.__game.landing()?.auto)))await page.locator('#landingAuto').click();
+ if(kind!=='crash'&&phase==='landing'&&await page.locator('#landingAuto').isVisible()&&!(await page.evaluate(()=>window.__game.landing()?.auto)))await page.locator('#landingAuto').click();
  await page.waitForTimeout(150);
 }
 assert.equal(await page.evaluate(()=>window.__game.phase),'report');const audit=await page.evaluate(()=>window.playAudit);assert.deepEqual(audit.projectionErrors,[],'rocket must stay in viewport on every rendered frame');assert.ok(audit.launchFrames>30);assert.deepEqual(errors,[]);
 if(kind==='lander'||kind==='rover'){const order=audit.phases.map(p=>p.phase).filter(p=>['launch','cruise','capture','landing','ops','report'].includes(p));assert.deepEqual(order,['launch','cruise','capture','landing','ops','report']);assert.notEqual(await page.locator('#repTitle').textContent(),'Landing impact')}
 if(kind==='overload')assert.match(await page.locator('#repTitle').textContent(),/Launch failure/);
+const fuel=await page.evaluate(()=>window.__game.fuel());assert.ok(!fuel.burns.some(b=>b.label==='Anomaly: wheel'));if(id!=='voyager2'){assert.ok(!(await page.locator('#repLessons').textContent()).includes('Team contributions:'));}if(kind==='crash'){assert.equal(await page.locator('#repTitle').textContent(),'Landing impact');assert.ok((await page.locator('#repBars .bar i').evaluateAll(es=>es.map(e=>e.style.width))).every(w=>w==='0%'));}const launchBurn=fuel.burns.find(b=>b.tank==='launch vehicle');if(kind!=='overload'){assert.ok(launchBurn.end.startsWith('Burnout (nominal)'));assert.equal(launchBurn.emptyAt,null);assert.ok(Math.abs(launchBurn.planned-launchBurn.delivered)<.001)}assert.ok(launchBurn.used<=800000.01);
 const result={id,kind,title:await page.locator('#repTitle').textContent(),...audit,errors};results.push(result);await writeFile(`${shots}/real-player-results.json`,JSON.stringify(results,null,2));console.log('PASS',id,kind,result.title,'frames',audit.launchFrames);await page.close()}
 try{const missions=process.env.REAL_MISSIONS?.split(',')||['moon:lander','mars:rover','jupiter:orbiter','saturn:orbiter','voyager2:legend'];for(const m of missions){const [id,kind]=m.split(':');await play(id,kind)}}finally{await browser.close();await new Promise(r=>server.close(r))}

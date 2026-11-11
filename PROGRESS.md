@@ -267,3 +267,10 @@ Live propellant final verification PASS: node tests/fuel.test.mjs, node tests/mo
 - Removed the 0.05 s render-delta clamp: ordinary slow frames now advance real elapsed time, with a 0.25 s guard only for large gaps.
 - Verification at ts(1), using actual UI buttons: Moon orbiter completed Launch-Cruise-Capture-Operations-Report in about 46 s, zero errors, rocket in frame on all 529 sampled launch frames. Overloaded Moon vehicle reached ballistic impact/report with 691 in-frame launch/fall samples and zero errors. Screenshots saved in tests/shots/. Astro/fuel regressions pass; overload unit test now requires unchanged burn time and lower delivered impulse.
 - Next: report outcome bars, reaction-wheel accounting, modal layering and solo report wording.
+
+## Real-player bug fixes - Group 2: outcome/report/fuel UI (8-11)
+- Failed landing, collision and lost-spacecraft outcomes now zero the science/instruments/lifetime report bars instead of displaying nominal subsystem percentages.
+- Reaction-wheel recovery charges only the separate attitude tank. Removed the old 3% main-tank charge and changed option/result text to match the 12% attitude-reserve ledger entry.
+- Fuel HUD is below modal backdrops. Solo reports omit four-role contribution boilerplate; multi-player reports retain it.
+- Verification at ts(1), actual UI: unassisted Moon lander reached an impact report with all three bars at 0%; Moon orbiter completed a normal mission. Modal stacking, absence of a main-tank wheel burn, solo wording, nominal-burnout label, kg bounds and planned/delivered launch impulse are asserted. Both runs had zero console errors, with 537 and 532 in-frame launch samples respectively. Screenshots in tests/shots/.
+- The intentionally unassisted descent also confirms the reported short play window; guidance/timing/EDL presentation are the next group.

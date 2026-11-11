@@ -136,3 +136,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Ion TCM uses 3000 s Isp, 50 mN, 2500 W and requires sufficient flight time. Only the 100 m/s cruise correction allowance uses ion; impulsive capture/flyby/landing remain chemical. This avoids treating low thrust as an instantaneous capture burn.
 - Tests: engineering/development/tour tests, physics/EDL regressions and all-mission browser smoke pass, zero errors. Added career-lock UI assertion for the next cumulative smoke.
 - Phase 4 implemented; tech budgets, unlock thresholds and ion hardware are game models. Next: NASA data snapshots and assets.
+
+## Phase 5.1 - DONKI loader and honest fallback
+- Requested API URL returned 404. NASA documentation confirms the September 2026 DONKI migration; the replacement CCMC endpoint was unreachable here, and legacy endpoint timed out.
+- Saved query URLs, UTC fetch timestamp, failure reason and an empty events list to data/donki-flares.json. No flare records were fabricated.
+- Added a validating snapshot loader and reload function. Available records label event class/date as historical context; local radiation and damage remain simulated. Empty/unavailable data uses a clearly labelled simulated particle storm.
+- Tests: models, full regressions and all-mission smoke pass with zero errors, including career UI lock. TODO: fetch a real curated DONKI snapshot when the service is reachable. Next: NASA models.

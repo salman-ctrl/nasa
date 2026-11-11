@@ -1,0 +1,8 @@
+{
+  "status": "unavailable",
+  "queryUrl": "https://api.nasa.gov/DONKI/FLR?startDate=2024-10-01&endDate=2024-10-10&api_key=DEMO_KEY",
+  "alternativeQueryUrl": "https://ccmc.gsfc.nasa.gov/DONKI-API/get/FLR?startDate=2024-10-01&endDate=2024-10-10",
+  "fetchedAt": "2026-11-11T11:49:05.656089+00:00",
+  "reason": "Original endpoint returned HTTP 404; migrated CCMC endpoint could not be reached. No flare records were fabricated.",
+  "events": []
+}

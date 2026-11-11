@@ -14,7 +14,7 @@ await page.evaluate(()=>{const g=window.__game;g.crew(4);g.start('moon');g.role(
 assert.equal(await page.locator('[data-k="launcher"]').first().isVisible(),false);
 await page.evaluate(()=>window.__game.launch());assert.equal(await page.evaluate(()=>window.__game.phase),'design');
 await page.evaluate(()=>window.__game.crew(1));
-await page.locator('#playMode').selectOption('career');assert.equal(await page.locator('[data-m="mars"]').isDisabled(),true);await page.locator('#playMode').selectOption('free');
+await page.locator('#btnBack').click();await page.locator('#playMode').selectOption('career');assert.equal(await page.locator('[data-m="mars"]').isDisabled(),true);await page.locator('#playMode').selectOption('free');
 for(const id of ['moon','mars','jupiter','saturn','neptune','voyager2']){
 await page.evaluate(id=>{const g=window.__game;g.ts(40);if(id==='voyager2')g.legend(id);else{g.start(id);g.set({launcher:'super',bus:'S',power:id==='moon'||id==='mars'?'solarL':'rtg4',comm:'hga15',inst:['mag'],vault:true,missionType:id==='moon'?'lander':id==='mars'?'rover':'orbiter'});if(id!=='moon')g.toRoute();if(id==='jupiter')g.route(['earth','mars','earth','jupiter'])}},id);
 if(id==='jupiter')await page.evaluate(()=>window.__game.tune());

@@ -274,3 +274,17 @@ Live propellant final verification PASS: node tests/fuel.test.mjs, node tests/mo
 - Fuel HUD is below modal backdrops. Solo reports omit four-role contribution boilerplate; multi-player reports retain it.
 - Verification at ts(1), actual UI: unassisted Moon lander reached an impact report with all three bars at 0%; Moon orbiter completed a normal mission. Modal stacking, absence of a main-tank wheel burn, solo wording, nominal-burnout label, kg bounds and planned/delivered launch impulse are asserted. Both runs had zero console errors, with 537 and 532 in-frame launch samples respectively. Screenshots in tests/shots/.
 - The intentionally unassisted descent also confirms the reported short play window; guidance/timing/EDL presentation are the next group.
+
+## Real-player bug fixes - Group 3: capture and descent (12-18)
+- Capture now has a visible 3.5-10 second burn, enlarged craft and a one-line explanation. Retrograde thrust slows the vehicle; exhaust physically points forward. Landing resets the capture HUD, instructions and guidance button state.
+- EDL now accumulates fixed 0.05 s physics steps, including landing pointing consumption. Guidance uses fixed engine force divided by current wet mass and stopping distance; propellant depletion still cuts thrust and leaves a gravity-driven descent.
+- The replay scale is computed from the same guided physics and initial tank state to give approximately 32 seconds at ts(1). This changes presentation time, not gravity, impulse or mass loss. Added the requested timeline, legged lander, terrain, altitude/speed gauges and mission-specific instructions; lunar controls omit parachute text/button.
+- Cruise HUD explicitly shows decision pauses and burns in progress. Sources explains the simplified shallow Mars entry, force rating, fixed physics step and compressed replay.
+- Actual UI play at ts(1): Moon lander and Mars rover both passed Launch -> Cruise -> Capture -> Landing -> Operations -> Report with zero console errors. Guided descent lasted 32.14 / 32.38 seconds; visible capture lasted 4.38 / 3.42 seconds. Every rendered launch sample remained in frame (534 / 539 samples). Screenshots saved in tests/shots/.
+- New tests/edl-fixed.test.mjs compares exact terminal states and remaining mass at ts 1, 6 and 40 across 5-77 fps: both bodies soft-land identically. Astro, engineering, fuel and all eight propellant browser scenarios pass; updated the old launch-failure text assertion to the new explicit Fuel exhausted wording.
+- Next: normal-speed Jupiter, Saturn and Voyager 2 playthroughs, then final regression/documentation checks.
+
+## Found during playthrough
+- The unassisted lunar playthrough reached impact before a useful control window; corrected the replay timing and guidance in Group 3.
+- Mars used the entire 5.5 km/s entry speed vertically, leaving heavier wet vehicles too little braking distance even with fuel. Corrected the explicitly labelled game entry geometry to a shallow 12-degree path until slowed, then vertical powered descent. The normal-speed Mars rover now lands successfully.
+- The guidance button retained its enabled caption on a later mission; reset it on every landing.

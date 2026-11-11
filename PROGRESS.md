@@ -117,3 +117,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Route bounds and launch checks enforce readiness date. Porkchop dates before readiness are grey and cannot be selected. Report shows development duration and readiness.
 - Tests: physics/EDL and all-mission smoke pass with zero errors. Game schedule costs/durations are assumptions. Legendary missions retain historical dates and bypass development.
 - Next: command light time and autonomy.
+
+## Phase 4.3 - signal delay and autonomy
+- Design adds ground control, safe-mode autonomy and science autonomy with mass/cost tradeoffs.
+- Orbit/surface operations now require an anomaly command. Effects apply only after ephemeris Earth-target one-way light time (Moon uses lunar range), compressed to a few screen seconds and displayed truthfully.
+- Autonomy reduces delay-related observing loss. Pending commands cannot be bypassed with Continue; report records actual delay and autonomy choice.
+- Tests: full physics/EDL and browser smoke pass, including delayed operations commands and reports, with zero errors. Next: optional moon tours.

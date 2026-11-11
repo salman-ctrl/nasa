@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8').replace(/\r/g,'');
 const engine=html.slice(html.indexOf('const G0='),html.indexOf('/* =====================================================================\n   2. MISSION DATA'));
 const helpers=html.slice(html.indexOf('const TAU='),html.indexOf('/* =====================================================================\n   1. ASTRODYNAMICS'));
-export const astro=vm.runInNewContext(helpers+'\n'+engine+'\n({evalRoute,jdOf,ephemPos,lambert,propagate,tuneDE,MU_SUN,DAY,PH,flybyConic,conicPoint,aimSolution})');
+export const astro=vm.runInNewContext(helpers+'\n'+engine+'\n({evalRoute,jdOf,ephemPos,lambert,propagate,tuneDE,MU_SUN,DAY,PH,flybyConic,conicPoint,aimSolution,shadowCylinder,conjunctionAngle})');
 const {evalRoute,jdOf,ephemPos,lambert,propagate,tuneDE,MU_SUN,DAY}=astro;
 const historical=(seq,dates)=>{const j=dates.map(d=>jdOf(...d));return evalRoute(seq,j[0],j.slice(1).map((v,i)=>v-j[i]),false)};
 const near=(v,w,t)=>assert.ok(Math.abs(v-w)<=t,`${v} expected ${w} Â± ${t}`);
@@ -32,6 +32,11 @@ for(const f of v2.flybys){
  assert.ok(changed.correction>1&&changed.miss>1000,'changed aiming changes path and burn');
  assert.ok(astro.aimSolution(v2,f,0).tooClose,'central aim crashes');
 }
+assert.equal(astro.shadowCylinder([20,0],[10,0],1),true);
+assert.equal(astro.shadowCylinder([5,0],[10,0],1),false);
+assert.equal(astro.shadowCylinder([20,2],[10,0],1),false);
+near(astro.conjunctionAngle([-10,0],[10,0]),0,1e-10);
+near(astro.conjunctionAngle([20,0],[10,0]),Math.PI,1e-10);
 let wins=0;
 for(const seed of [7,31,101,2026]){const seq=['earth','mars','earth','jupiter'];const t=tuneDE(seq,true,{jdMin:jdOf(2026,1,1),jdMax:jdOf(2040,12,31),seed});const r=evalRoute(seq,t.jd0,t.tofs,true);console.log('Auto-tune',seed,(r.dvEq/1000).toFixed(3),r.crash);if(r.ok&&!r.crash&&r.dvEq<=6000)wins++}
 assert.ok(wins>=3,`${wins}/4 optimizer seeds passed`);

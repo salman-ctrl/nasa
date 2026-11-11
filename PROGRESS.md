@@ -80,3 +80,9 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 - Shared bounded plume and BURN HUD cover lateral aim changes, post-flyby rejoin, powered periapsis burns, anomaly TCMs and capture. Exhaust extends opposite the acceleration vector; duration grows with delta-v.
 - Tests: physics and all-mission smoke pass; browser explicitly enters chase view and checks the 0.420 km/s burn HUD, with zero errors.
 - Known limit: finite burn duration is visual; trajectory impulses remain instantaneous patched conics. Next: eclipses and conjunction.
+
+## Phase 2.3 - eclipse and conjunction geometry
+- Shadow cylinders detect planet eclipses in SI coordinates, including planet-frame flybys; solar power display drops to zero and a game-model battery drains. RTG power is unaffected.
+- Earth-centred Sun/spacecraft angle below two degrees produces a blackout banner and zero instantaneous downlink. Operations availability feeds the engineering data fraction and final science; transitions appear in the report.
+- Tests: shadow front/behind/off-axis and conjunction/opposition unit cases pass, full physics and all-mission smoke pass with zero errors.
+- Assumptions: cylindrical shadows, no penumbra, two-degree radio threshold and battery endurance are game models; planar ephemeris. Next: capture orbit and aerobraking.

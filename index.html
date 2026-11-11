@@ -126,6 +126,7 @@ tailwind.config={theme:{extend:{
 
 <div id="banner" class="fixed left-1/2 top-[28%] -translate-x-1/2 text-center text-white font-extrabold text-3xl sm:text-4xl tracking-tight pointer-events-none z-20 transition-opacity duration-500 opacity-0 px-4"></div>
 <div id="hint" class="fixed left-1/2 bottom-3 -translate-x-1/2 text-[11.5px] font-semibold bg-paper/85 px-3 py-1 rounded-full pointer-events-none z-10 whitespace-nowrap">Drag: rotate · Scroll: zoom</div>
+<div id="environmentHud" class="glass fixed left-3 top-[112px] px-3 py-1 text-xs z-20" hidden></div>
 <div id="burnHud" class="glass fixed left-1/2 top-28 -translate-x-1/2 px-3 py-2 text-flame font-extrabold z-20" hidden></div>
 
 <!-- planet-frame cinematic -->
@@ -332,6 +333,8 @@ function aimSolution(rr,f,b){const p=PH[f.id],a=p.mu/f.vin**2,rp=Math.sqrt(a*a+b
   const vo=[f.vout*Math.cos(ang),f.vout*Math.sin(ang)],v=vo.map((x,i)=>x+rr.P[f.idx].v[i]),L=rr.legs[f.idx];
   const end=propagate(L.r1,v,L.dt,MU_SUN),miss=nrm(sub(end.r,L.r2)),correction=nrm(sub(L.v1,v));
   return{rp,delta,vo,v,miss,correction,tooClose:rp<p.rMin}}
+function shadowCylinder(sc,body,radius){const len=nrm(body);if(!len)return false;const dx=sc[0]-body[0],dy=sc[1]-body[1],along=(dx*body[0]+dy*body[1])/len;return along>0&&Math.abs(dx*body[1]-dy*body[0])/len<radius}
+function conjunctionAngle(sc,earth){const line=sub(sc,earth),length=nrm(line)*nrm(earth);return length>1?Math.acos(clamp(-(earth[0]*line[0]+earth[1]*line[1])/length,-1,1)):Math.PI}
 
 /* =====================================================================
    2. MISSION DATA (simplified engineering models, real physics laws)
@@ -417,7 +420,8 @@ function compute(c,mods){
   const duty=!alive?0:iLoad?clamp((pAvail-base)/iLoad,0,1):1;
   const passes=Math.max(1,c.passes-(mods.passCut||0));
   const rate=Math.min(6000,300*A.D*A.D/(M.earthDist*M.earthDist));                      // kbps ∝ D²/d²
-  const down=rate*passes*8*3600/1e6;                                                       // Gbit/day
+  const availability=mods.opsSamples?1-(mods.blackoutSamples||0)/mods.opsSamples:1;
+  const down=rate*passes*8*3600/1e6*availability;                                                       // Gbit/day
   const imgMul=mods.imgMul||1;
   const gen=insts.reduce((s,i)=>s+i.data*(i.img?imgMul:1),0)*duty;
   const dataFrac=gen>0?Math.min(1,Math.sqrt(down/gen)):1;                                  // onboard prioritization softens bottlenecks
@@ -963,7 +967,7 @@ function resetLaunchScene(){fireball.visible=false;if(rocket){rocket.visible=tru
     rocket.userData.boosters.forEach((b,i)=>{b.position.set((b.position.x<0?-1:1)*b.userData.x0,0,0);b.rotation.set(0,0,0);b.userData.vx=0;if(b.userData.plume)b.userData.plume.visible=false})}
   flame.visible=false;smoke.visible=false;pLife.fill(0);sm.forEach(s=>s.age=99);if(craftStand)craftStand.visible=true}
 function doLaunch(){endCinematic();aimState=null;$('aimModal').hidden=true;if(legend){const rr=cfg.rr;const opts=['med','heavy','super'];const dry=600;cfg.launcher=opts.find(id=>capacity(LAUNCHERS[id],rr.c3)>=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)))||'super';rebuildModels()}
-  launchRes=legend?legendResult():compute(cfg);mods={};active=earth;resetLaunchScene();setPhase('launch');lt=0;craftStand.visible=false;flame.visible=smoke.visible=true;autoSpin=false;
+  launchRes=legend?legendResult():compute(cfg);mods={};environmental={eclipse:false,blackout:false,battery:1};active=earth;resetLaunchScene();setPhase('launch');lt=0;craftStand.visible=false;flame.visible=smoke.visible=true;autoSpin=false;
   shot({tx:PAD.x,ty:30,tz:PAD.z,d:140,yaw:.4,pitch:.07});Object.assign(rig,des);rig.d=200;say(`Payload encapsulated on the ${LAUNCHERS[cfg.launcher].name.toLowerCase()}. Countdown.`)}
 function legendResult(){const rr=cfg.rr,L=LAUNCHERS[cfg.launcher],dry=600,wet=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)),cap=capacity(L,rr.c3);return{legend:true,rr,L,dry,wet,cap,launchOK:rr.ok&&wet<=cap,crashed:!!rr.crash,alive:true}}
 function banner(t,ms=1800){const b=$('banner');b.innerHTML=t;b.style.opacity=1;clearTimeout(banner.h);banner.h=setTimeout(()=>b.style.opacity=0,ms)}
@@ -1010,6 +1014,13 @@ function updateBurn(dt){if(burnLeft<=0){burnPlume.visible=false;$('burnHud').hid
   if(!craft)return;if(burnPlume.parent!==scene)scene.add(burnPlume);burnPlume.visible=true;
   const scale=chase?.003:local?.15:1;burnPlume.scale.set(scale,scale*(1+Math.min(3,burnTotal/1000)),scale);
   burnPlume.quaternion.setFromUnitVectors(burnAxis,burnDirection);burnPlume.position.copy(craft.position).addScaledVector(burnDirection,-2*scale*(1+Math.min(3,burnTotal/1000)))}
+let environmental={eclipse:false,blackout:false,battery:1};
+function updateEnvironment(sc,jd,dt,ops){const earth=ephemPos('earth',jd);let eclipsedBy='';for(const id in PH)if(shadowCylinder(sc,ephemPos(id,jd),PH[id].R)){eclipsedBy=PH[id].name;break}
+  const eclipse=!!eclipsedBy&&POWER[cfg.power].kind==='solar',blackout=conjunctionAngle(sc,earth)<2*d2r;
+  if(eclipse!==environmental.eclipse||blackout!==environmental.blackout){mods.environmentLog=mods.environmentLog||[];if(mods.environmentLog.length<40)mods.environmentLog.push(fmtDate(jd)+': '+(eclipse?'eclipse by '+eclipsedBy:blackout?'solar conjunction':'link and sunlight restored'))}
+  environmental={eclipse,blackout,battery:clamp(environmental.battery+(eclipse?-dt/20:dt/10),0,1)};
+  if(ops){mods.opsSamples=(mods.opsSamples||0)+dt;if(blackout)mods.blackoutSamples=(mods.blackoutSamples||0)+dt}
+  $('environmentHud').hidden=!(eclipse||blackout);$('environmentHud').textContent=(eclipse?'Eclipse: solar 0 W | battery '+fmt(environmental.battery*100)+'% ':'')+(blackout?'Comms blackout: downlink 0':'');return environmental}
 let chaseMode=false,chaseCraft=null;
 const chaseScene=new THREE.Scene();chaseScene.background=new THREE.Color(0x161d48);chaseScene.add(new THREE.AmbientLight(0x9aa0d8,.8));
 const chaseSun=new THREE.PointLight(0xfff0d0,3,0,0);chaseScene.add(chaseSun);
@@ -1062,7 +1073,7 @@ function updateCinematic(dt){const a=cinematic;if(!a)return;a.t+=dt;
   a.craft.position.set(q[0]/a.c.p.R,0,-q[1]/a.c.p.R);a.craft.lookAt(ahead[0]/a.c.p.R,0,-ahead[1]/a.c.p.R);a.planet.rotation.y+=dt*.16;if(t>=0&&!a.burned){a.burned=true;triggerBurn(a.f.powered,[ahead[0]-q[0],ahead[1]-q[1]])}
   const range=Math.hypot(q[0],q[1])/a.c.p.R;
   shot({tx:q[0]/a.c.p.R*.4,tz:-q[1]/a.c.p.R*.4,d:Math.max(9,range*2.8)});
-  if(a.t>=duration)endCinematic()}
+  const centre=cfg.rr.P[a.f.idx].r;updateEnvironment([centre[0]+q[0],centre[1]+q[1]],a.f.jd,dt,false);if(a.t>=duration)endCinematic()}
 function endCinematic(){if(!cinematic)return;const correction=cinematic.f.aimSolution?.correction||0;shot(cinematic.saved);Object.assign(rig,des);cinematic=null;$('flyCinema').hidden=true;if(correction>.01)triggerBurn(correction);
   const geometries=new Set(),materials=new Set();flyGroup.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material&&!Array.from(outlineMats.values()).includes(o.material))materials.add(o.material)});
   geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());flyGroup.clear()}
@@ -1135,7 +1146,7 @@ function updateCruise(dt){if(cinematic){updateCinematic(dt);return}if(cr.mode===
   else{des.tx+=(pos.x*.6-des.tx)*k;des.tz+=(pos.z*.6-des.tz)*k;des.d+=(SYS.rMax*1.5-des.d)*k*.5}
   const rM=Math.hypot(s.r[0],s.r[1]),vM=Math.hypot(s.v[0],s.v[1]),eP=ephemPos('earth',cr.jd),dE=Math.hypot(s.r[0]-eP[0],s.r[1]-eP[1]);
   const dtSec=(cr.jd-prevJ)*DAY;lag+=dtSec*((MU_SUN/(rM*CL*CL)+vM*vM/(2*CL*CL))-(MU_SUN/(AU*CL*CL)+29780*29780/(2*CL*CL)));
-  updateViewFX(dt,pos,rM,vM,s.r);
+  updateEnvironment(s.r,cr.jd,dt,false);updateViewFX(dt,pos,rM,vM,s.r);
   const nf=cr.fbs.find(f=>!f.done),nxt=nf?`${PH[nf.id].name} in ${fmtDur(nf.jd-cr.jd)}`:`${PH[cfg.rr.seq[cfg.rr.seq.length-1]].name} in ${fmtDur(cr.jdEnd-cr.jd)}`;
   $('hudPhase').textContent=near?`${PH[near.id].name} flyby`:`Leg ${s.li+1}: ${PH[cfg.rr.seq[s.li]].name} → ${PH[cfg.rr.seq[s.li+1]].name}`;$('hudDay').textContent=fmtDate(cr.jd);$('hudBar').style.width=(cr.p*100)+'%';
   const rows=[['From Sun',fmt(rM/AU,2)+' AU'],['Speed (Sun frame)',fmt(vM/1000,2)+' km/s'],['Signal delay',dE/CL<60?fmt(dE/CL,1)+' s':dE/CL<7200?fmt(dE/CL/60,1)+' min':fmt(dE/CL/3600,2)+' h'],['Next',nxt]];
@@ -1146,7 +1157,7 @@ function updateCruise(dt){if(cinematic){updateCinematic(dt);return}if(cr.mode===
 function updateMoonCruise(dt){if(paused){placeMoon(cr.t);return}const p0=cr.p;cr.p=Math.min(1,cr.p+dt*cruiseSpeed/cr.sec);cr.t=cr.p*cr.tof;
   for(const e of evtQueue)if(!e.done&&p0<e.at&&cr.p>=e.at){e.done=1;openEvent(e);break}
   const s=moonCraft(cr.t);SYS.craft.position.copy(s.pos);const a=moonCraft(Math.min(cr.tof,cr.t+cr.tof*.003)).pos;if(a.distanceToSquared(s.pos)>1e-8)SYS.craft.lookAt(a);
-  SYS.done.geometry.setDrawRange(0,Math.max(2,Math.round(cr.p*SYS.N)+1));placeMoon(cr.t);updateViewFX(dt,s.pos,s.r,s.v);
+  SYS.done.geometry.setDrawRange(0,Math.max(2,Math.round(cr.p*SYS.N)+1));placeMoon(cr.t);const er=ephemPos('earth',JD_MIN+cr.t),az=Math.atan2(-s.pos.z,s.pos.x);updateEnvironment([er[0]+s.r*Math.cos(az),er[1]+s.r*Math.sin(az)],JD_MIN+cr.t,dt,false);updateViewFX(dt,s.pos,s.r,s.v);
   const k=1-Math.exp(-dt*2);des.tx+=(s.pos.x*.55-des.tx)*k;des.tz+=(s.pos.z*.55-des.tz)*k;
   $('hudPhase').textContent='Trans-lunar coast';$('hudDay').textContent=`Day ${fmt(cr.t,1)} / ${fmt(cr.tof,1)}`;$('hudBar').style.width=(cr.p*100)+'%';
   hudRows([['From Earth',fmt(s.r/1e3)+' km'],['Speed',fmt(s.v/1000,2)+' km/s'],['Signal delay',fmt(s.r/CL,2)+' s'],['Propellant',fmt(launchRes.prop)+' kg']]);if(cr.p>=1)arrive()}
@@ -1164,6 +1175,8 @@ function arrive(){if(!legend)triggerBurn(cr.mode==='moon'?MISSIONS.moon.insertio
 function updateOps(dt){opsT+=dt;const legendMode=launchRes.legend;
   let T,vR;if(cr.mode==='moon'){placeMoon(cr.tof+opsT*.3);T=SYS.moon.m;vR=2.2}else{placeHelio(cr.jdEnd+opsT*.8);const id=cfg.rr.seq[cfg.rr.seq.length-1];T=SYS.bodies[id].m;vR=PH[id].vR}
   const c=T.position;
+  if(!legendMode){const jd=cr.mode==='moon'?JD_MIN+cr.tof+opsT*.8:cr.jdEnd+opsT*.8,id=cr.mode==='moon'?'earth':res.M.target,body=ephemPos(id,jd),rad=cr.mode==='moon'?R_MOON:PH[id].rCap,angle=cr.mode==='moon'?SYS.ph+SYS.w*(cr.tof+opsT*.3)*DAY:opsT*1.4;
+    updateEnvironment([body[0]+rad*Math.cos(angle),body[1]+rad*Math.sin(angle)],jd,dt,true);res=compute(cfg,mods)}
   if(legendMode){const s=helioState(cr.jdEnd),dir=new THREE.Vector3(s.v[0],0,-s.v[1]).normalize();SYS.craft.position.copy(c).addScaledVector(dir,vR*1.6+opsT*vR*.8).y+=vR*.4}
   else{const a=opsT*1.4,rr=vR*2.4;SYS.craft.position.set(c.x+Math.cos(a)*rr,Math.sin(a*.5)*vR*.4,c.z-Math.sin(a)*rr);SYS.craft.lookAt(c.x+Math.cos(a+.1)*rr,0,c.z-Math.sin(a+.1)*rr)}
   if(SYS.pulse&&SYS.pulse.userData.t!=null){const t=SYS.pulse.userData.t+=dt;SYS.pulse.position.copy(c);SYS.pulse.material.opacity=Math.max(0,1-t/1.6);SYS.pulse.scale.setScalar(vR*2+t*vR*6);if(t>1.6)SYS.pulse.userData.t=null}
@@ -1171,7 +1184,7 @@ function updateOps(dt){opsT+=dt;const legendMode=launchRes.legend;
   if(legendMode){$('hudPhase').textContent='Encounter';$('hudDay').textContent=fmtDate(cr.jdEnd);hudRows([['Route',routeName(cfg.rr.seq)],['Duration',fmtDur(cfg.rr.tof)]]);if(opsT>4&&!flags.rep){flags.rep=1;showReport('legend')}return}
   const f=sstep(.5,6.5,opsT),mo=f*res.M.life*Math.min(1,res.lifeFrac);
   $('hudPhase').textContent=res.alive?'Science operations':'Signal lost';$('hudDay').textContent=`Month ${fmt(mo,1)}`;$('hudBar').style.width=(f*100)+'%';
-  hudRows([['Science',fmt(res.sci*f)+' / '+res.M.goal],['Data home',fmt(res.down,res.down<1?2:1)+' Gb/day'],['Instruments on',fmt(res.duty*100)+'%'],['Power',fmt(res.pAvail)+' W']]);
+  hudRows([['Science',fmt(res.sci*f)+' / '+res.M.goal],['Data home',fmt(environmental.blackout?0:res.down,res.down<1?2:1)+' Gb/day'],['Instruments on',fmt(res.duty*100)+'%'],['Power',fmt(environmental.eclipse?0:res.pAvail)+' W']]);
   if(opsT>8&&!flags.rep){flags.rep=1;showReport('ops')}}
 
 /* ---- events ---- */
@@ -1198,10 +1211,10 @@ $('evtGo').onclick=()=>{$('evt').hidden=true;paused=false};
    13. REPORT + SHAREABLE MISSION PATCH
    ===================================================================== */
 let lastReport=null;
-function showReport(kind){setPhase('report');$('hud').hidden=true;
+function showReport(kind){$('environmentHud').hidden=true;setPhase('report');$('hud').hidden=true;
   const stat=(v,l)=>`<div class="bg-paper2 rounded-lg p-2.5"><b class="block text-lg font-extrabold tabular-nums">${v}</b><span class="text-[11px] text-muted font-semibold">${l}</span></div>`;
   const bar=(l,f,col)=>`<div><div class="flex justify-between text-[11.5px] font-bold"><span>${l}</span><span>${fmt(clamp(f,0,1)*100)}%</span></div><div class="bar mt-1"><i style="width:${clamp(f,0,1)*100}%;background:${col}"></i></div></div>`;
-  const rr=cfg.rr,L=[];for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
+  const rr=cfg.rr,L=[];if(mods.environmentLog?.length)L.push('Geometry log: '+mods.environmentLog.join('; '));for(const a of mods.aims||[])L.push(`${PH[a.id].name} aim accuracy: ${fmt(a.accuracy,1)}%; uncorrected miss ${fmt(a.miss/1000)} km, rejoin burn ${fmt(a.correction/1000,3)} km/s. Aiming and rejoin used ${fmt(a.cost*100,2)}% of nominal spacecraft ?v.`);let n=0,title='',real='',tag='';
   const routeBlock=()=>{if(!rr||!rr.ok)return'';const fs=fuelStats(rr);return`<div class="p-3 rounded-lg bg-paper2 border border-line">
      <div class="flex flex-wrap items-center gap-1 text-[12px] font-bold">${rr.seq.map(id=>`<span class="inline-flex items-center gap-1"><i class="dot" style="background:${PH[id].col}"></i>${PH[id].name}</span>`).join('<span class="text-muted">→</span>')}</div>
      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11.5px]"><div><b class="block text-[15px]">${fmt(rr.c3,1)}</b><span class="text-muted">C3 km²/s²</span></div><div><b class="block text-[15px] text-ok">+${fmt(rr.free/1000,2)}</b><span class="text-muted">km/s free speed</span></div><div><b class="block text-[15px]">${fmt(rr.dvEq/1000,2)}</b><span class="text-muted">km/s total Δv</span></div><div><b class="block text-[15px] ${fs.saved>0?'text-ok':'text-warn'}">${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,2)} t</b><span class="text-muted">propellant vs ${legend?'history':'direct'}</span></div></div></div>`};
@@ -1297,7 +1310,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
   if(phase==='ops')updateOps(dt);
   placeCam(dt);updateBurn(dt);if(chaseMode&&phase==='cruise'&&cr?.mode==='helio'&&!cinematic)updateChase();renderer.render(cinematic?flyScene:chaseMode&&phase==='cruise'&&cr?.mode==='helio'?chaseScene:active,camera);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-window.__game={burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+window.__game={environment:(sc,jd)=>updateEnvironment(sc,jd,0,false),burn:(dv)=>triggerBurn(dv),camera:()=>toggleCamera(),aim:()=>aimState?{id:aimState.f.id,...aimState.solution}:null,aimSet:v=>changeAim(v),aimConfirm:()=>confirmAim(),flyby:()=>cinematic?{id:cinematic.f.id,rpR:cinematic.f.rpR,vin:cinematic.f.vin,vout:cinematic.f.vout}:null,skipFly:()=>endCinematic(),ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
   set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
   tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
   runTo:(ph)=>new Promise(res=>{const t0=performance.now();const iv=setInterval(()=>{if(aimState)confirmAim();const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};

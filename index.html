@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geodesic · Mission Architect</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{
+  colors:{paper:'#fbf6ec',paper2:'#f3ebdc',line:'#e2d6c0',ink:'#2b2622',muted:'#7b7166',accent:'#1f6f6a',ok:'#2f7d5b',warn:'#b7791f',bad:'#b93a2c',flame:'#e2772e',night:'#141b3a'},
+  fontFamily:{ui:['"Plus Jakarta Sans"','system-ui','sans-serif'],mono:['"JetBrains Mono"','ui-monospace','monospace']}}}}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  html,body{height:100%}
+  body{-webkit-user-select:none;user-select:none}
+  .glass{background:rgba(251,246,236,.95);border:1px solid #e2d6c0;border-radius:12px;box-shadow:0 8px 26px rgba(60,40,20,.16)}
+  .kpi{flex:0 0 auto;min-width:132px;padding:8px 12px;transition:background .35s,border-color .35s}
+  .kpi .l{font-size:11px;color:#7b7166;font-weight:700;white-space:nowrap}
+  .kpi .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.25}
+  .kpi .s{font-size:11px;color:#7b7166;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .kpi.warn{background:#fdf0d2;border-color:#ecd49a}.kpi.warn .v{color:#b7791f}
+  .kpi.bad{background:#fbdcd5;border-color:#eeb0a5}.kpi.bad .v{color:#b93a2c}
+  .kpi.ok .v{color:#2f7d5b}
+  .grp>h4{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7b7166;margin:0 0 6px}
+  .opt{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;font:inherit;background:#f3ebdc;border:1.5px solid #e2d6c0;border-radius:9px;padding:7px 9px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
+  .opt:hover{border-color:#1f6f6a}
+  .opt:active{transform:scale(.98)}
+  .opt b{font-size:12.5px;font-weight:800;color:#2b2622}
+  .opt span{font-size:10.5px;color:#7b7166;font-variant-numeric:tabular-nums;line-height:1.3}
+  .opt.sel{background:#2b2622;border-color:#2b2622}
+  .opt.sel b{color:#fbf6ec}.opt.sel span{color:#d8cdb8}
+  .opt.dis,.opt:disabled{opacity:.4;cursor:not-allowed}
+  .chk{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.35}
+  .chk i{flex:0 0 18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:11px;color:#fff;margin-top:1px}
+  .chk.ok i{background:#2f7d5b}.chk.bad i{background:#b93a2c}.chk.warn i{background:#b7791f}
+  .step{padding:4px 9px;border-radius:999px;color:#7b7166;white-space:nowrap}
+  .step.on{background:#2b2622;color:#fbf6ec}
+  .step.done{color:#2f7d5b}
+  .btn{font:inherit;font-weight:800;border-radius:10px;padding:9px 14px;cursor:pointer;border:1.5px solid #e2d6c0;background:#f3ebdc;color:#2b2622}
+  .btn:hover{border-color:#1f6f6a}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.primary{background:#e2772e;border-color:#c25f1d;color:#fff;box-shadow:0 4px 0 #a54f17}
+  .btn.primary:active{transform:translateY(2px);box-shadow:0 2px 0 #a54f17}
+  .btn.dark{background:#2b2622;border-color:#2b2622;color:#fbf6ec}
+  .modal{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:rgba(20,27,58,.38);backdrop-filter:blur(3px);z-index:30}
+  .modal[hidden]{display:none}
+  .card-m{cursor:pointer;transition:transform .15s,border-color .15s}
+  .card-m:hover{transform:translateY(-3px);border-color:#e2772e}
+  #banner{text-shadow:0 2px 0 rgba(43,38,34,.35)}
+  input[type=range]{accent-color:#1f6f6a;width:100%}
+  .scroll-thin{scrollbar-width:thin}
+  .bar{height:7px;border-radius:4px;background:#e2d6c0;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px;transition:width .3s}
+  .seq{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-weight:800;font-size:12px;background:#f3ebdc;border:1.5px solid #e2d6c0}
+  .seq.tgt{background:#2b2622;color:#fbf6ec;border-color:#2b2622}
+  .seq button{font:inherit;border:0;background:none;color:#b93a2c;cursor:pointer;padding:0 0 0 2px;font-weight:800}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1.5px solid #2b2622}
+  .fb{background:#f3ebdc;border:1.5px solid #e2d6c0;border-radius:9px;padding:7px 9px;font-size:11.5px;line-height:1.4}
+  .fb.bad{background:#fbdcd5;border-color:#eeb0a5}
+  .fb.good{border-color:#9fd0b5}
+  .chipbtn{font:inherit;font-weight:800;font-size:11.5px;border-radius:999px;padding:4px 9px;border:1.5px dashed #c9bb9f;background:transparent;cursor:pointer;color:#2b2622}
+  .chipbtn:hover{border-color:#1f6f6a;border-style:solid}
+  .chipbtn:disabled{opacity:.35;cursor:not-allowed}
+  .coach-hi{box-shadow:0 0 0 3px #e2772e,0 0 0 9px rgba(226,119,46,.28)!important;z-index:44!important;animation:hi 1.4s ease-in-out infinite}
+  @keyframes hi{50%{box-shadow:0 0 0 3px #e2772e,0 0 0 14px rgba(226,119,46,.08)}}
+  @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+  .star{display:inline-block;animation:pop .45s both}
+  [hidden]{display:none!important}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+</head>
+<body class="font-ui text-ink bg-[#cfdcf2] overflow-hidden text-[13px]">
+
+<canvas id="c" class="fixed inset-0 w-full h-full block cursor-grab" aria-label="3D view. Drag to rotate, scroll to zoom."></canvas>
+<div id="fade" class="fixed inset-0 bg-night opacity-0 pointer-events-none transition-opacity duration-700 z-40"></div>
+
+<header class="fixed top-0 inset-x-0 p-3 flex flex-col gap-2 pointer-events-none z-10">
+  <div class="flex items-center gap-2 flex-wrap">
+    <div class="glass px-3 py-1.5 flex items-baseline gap-2">
+      <b class="text-[17px] font-extrabold tracking-tight">GEODESIC</b>
+      <span class="text-xs text-muted font-semibold hidden sm:inline">Mission Architect · Space Mission Design Game</span>
+    </div>
+    <ol id="steps" class="glass px-1.5 py-1 flex gap-0.5 text-[11px] font-bold overflow-x-auto"></ol>
+    <div class="ml-auto flex items-center gap-2 pointer-events-auto">
+      <div id="log" class="px-3 py-1.5 rounded-full bg-ink text-paper text-xs font-semibold max-w-[46ch] truncate">Choose a mission to begin</div>
+      <button id="btnSound" class="glass w-9 h-9 grid place-items-center text-base" title="Sound on/off" aria-label="Toggle sound">🔊</button>
+    </div>
+  </div>
+  <div id="kpis" class="flex gap-2 overflow-x-auto pointer-events-auto pb-1" hidden></div>
+</header>
+
+<!-- design -->
+<aside id="panel" class="glass fixed right-3 top-[148px] bottom-3 w-[300px] p-3 flex flex-col gap-3 overflow-y-auto scroll-thin z-10" hidden></aside>
+<section id="review" class="glass fixed left-3 top-[148px] w-[290px] p-3 flex flex-col gap-2 z-10" hidden>
+  <div class="flex items-center justify-between"><h3 class="font-extrabold text-sm">Flight readiness review</h3><span id="missionTag" class="text-[11px] font-bold text-muted"></span></div>
+  <div id="checks" class="flex flex-col gap-1.5"></div>
+  <div class="mt-1 pt-2 border-t border-line">
+    <div class="flex justify-between text-[11px] font-bold text-muted"><span>Predicted science</span><span id="sciTxt"></span></div>
+    <div class="bar mt-1"><i id="sciBar" class="bg-accent" style="width:0"></i></div>
+  </div>
+  <p id="reviewNote" class="text-[11px] text-muted leading-snug"></p>
+  <button id="btnNext" class="btn primary w-full text-[15px] mt-1">Plan the route →</button>
+  <button id="btnBack" class="btn w-full text-xs">Change mission</button>
+</section>
+
+<!-- route -->
+<aside id="rpanel" class="glass fixed right-3 top-[148px] bottom-3 w-[330px] p-3 flex flex-col gap-3 overflow-y-auto scroll-thin z-10" hidden></aside>
+<section id="rsum" class="glass fixed left-3 top-[148px] w-[300px] p-3 flex flex-col gap-2 z-10 max-h-[calc(100%-160px)] overflow-y-auto scroll-thin" hidden></section>
+
+<!-- cruise HUD -->
+<div id="hud" class="glass fixed left-3 bottom-3 p-3 w-[310px] flex flex-col gap-2 z-10" hidden>
+  <div class="flex items-baseline justify-between"><span id="hudPhase" class="font-extrabold text-sm">Cruise</span><span id="hudDay" class="font-mono font-bold text-xs text-muted"></span></div>
+  <div class="bar"><i id="hudBar" class="bg-flame" style="width:0"></i></div>
+  <div id="hudRows" class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11.5px]"></div>
+  <div class="flex gap-1.5 pt-1 flex-wrap" id="hudSpeeds"></div>
+  <div class="flex items-center gap-1 pt-1 border-t border-line">
+    <span class="text-[11px] text-muted font-bold mr-1">Gravity view</span>
+    <button id="vNewton" class="btn text-xs py-1 px-2.5">Newton</button>
+    <button id="vEinstein" class="btn text-xs py-1 px-2.5 dark">Einstein</button>
+  </div>
+  <p id="viewNote" class="text-[11px] text-muted leading-snug"></p>
+</div>
+
+<div id="banner" class="fixed left-1/2 top-[28%] -translate-x-1/2 text-center text-white font-extrabold text-3xl sm:text-4xl tracking-tight pointer-events-none z-20 transition-opacity duration-500 opacity-0 px-4"></div>
+<div id="hint" class="fixed left-1/2 bottom-3 -translate-x-1/2 text-[11.5px] font-semibold bg-paper/85 px-3 py-1 rounded-full pointer-events-none z-10 whitespace-nowrap">Drag: rotate · Scroll: zoom</div>
+
+<!-- tutorial coach -->
+<div id="coach" class="glass fixed z-50 w-[300px] p-3.5 flex flex-col gap-2" hidden>
+  <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold tracking-[.12em] uppercase text-flame">Flight school</span><span id="coachN" class="text-[11px] font-bold text-muted"></span></div>
+  <p id="coachT" class="leading-relaxed text-[13px]"></p>
+  <div class="flex gap-2"><button id="coachNext" class="btn dark text-xs py-1.5 flex-1">Next</button><button id="coachSkip" class="btn text-xs py-1.5">Skip</button></div>
+</div>
+
+<!-- brief -->
+<div id="brief" class="modal">
+  <div class="glass max-w-[1040px] w-full p-5 sm:p-6 max-h-full overflow-y-auto scroll-thin">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <p class="text-[11px] font-extrabold tracking-[.12em] uppercase text-flame">Mission control is hiring</p>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">You are the mission architect.</h1>
+        <p class="text-muted mt-1 max-w-[72ch] leading-relaxed">Design a spacecraft, then find a route where planets lend you speed. Every gravity assist you plan saves tonnes of propellant, and every tonne saved means a cheaper rocket or more science. Planet positions come from NASA JPL orbital elements, and the trajectory math is the same patched-conic method mission designers use.</p>
+      </div>
+      <button id="btnSchool" class="btn primary">New here? Flight school (60 s) →</button>
+    </div>
+    <h2 class="font-extrabold mt-5 text-sm uppercase tracking-[.08em] text-muted">Missions</h2>
+    <div id="missions" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2"></div>
+    <h2 class="font-extrabold mt-5 text-sm uppercase tracking-[.08em] text-muted">Legendary routes: can you beat the original planners?</h2>
+    <div id="legends" class="grid sm:grid-cols-3 gap-3 mt-2"></div>
+  </div>
+</div>
+
+<!-- event -->
+<div id="evt" class="modal" hidden>
+  <div class="glass max-w-[520px] w-full p-5">
+    <p id="evtTag" class="text-[11px] font-extrabold tracking-[.12em] uppercase text-bad">Anomaly</p>
+    <h2 id="evtTitle" class="text-xl font-extrabold tracking-tight mt-1"></h2>
+    <p id="evtBody" class="text-muted mt-1 leading-relaxed"></p>
+    <div id="evtOpts" class="grid gap-2 mt-4"></div>
+    <p id="evtResult" class="mt-3 font-semibold leading-relaxed" hidden></p>
+    <button id="evtGo" class="btn dark w-full mt-3" hidden>Continue cruise</button>
+  </div>
+</div>
+
+<!-- report -->
+<div id="report" class="modal" hidden>
+  <div class="glass max-w-[780px] w-full p-5 sm:p-6 max-h-full overflow-y-auto scroll-thin">
+    <div class="flex items-start justify-between gap-3 flex-wrap">
+      <div><p id="repTag" class="text-[11px] font-extrabold tracking-[.12em] uppercase text-flame">Mission report</p><h2 id="repTitle" class="text-2xl font-extrabold tracking-tight mt-1"></h2></div>
+      <div id="stars" class="text-4xl tracking-widest"></div>
+    </div>
+    <div id="repStats" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4"></div>
+    <div id="repRoute" class="mt-4"></div>
+    <div id="repBars" class="grid gap-2 mt-4"></div>
+    <h3 class="font-extrabold mt-5">What happened, and why</h3>
+    <ul id="repLessons" class="mt-2 grid gap-2 text-[13px] leading-relaxed"></ul>
+    <div class="mt-4 p-3 rounded-lg bg-paper2 border border-line"><p class="text-[11px] font-extrabold tracking-[.1em] uppercase text-accent">Real mission check</p><p id="repReal" class="mt-1 leading-relaxed"></p></div>
+    <div class="flex gap-2 mt-5 flex-wrap">
+      <button id="btnRedesign" class="btn primary">Try again</button>
+      <button id="btnShare" class="btn dark">Save mission patch ⤓</button>
+      <button id="btnNew" class="btn">Choose another mission</button>
+    </div>
+  </div>
+</div>
+
+<div id="err" class="fixed inset-0 grid place-items-center p-6 text-center bg-paper z-50" hidden>This game needs WebGL, and this browser doesn't provide it.</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const $=id=>document.getElementById(id);
+const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,f)=>a+(b-a)*f;
+const sstep=(a,b,x)=>{x=clamp((x-a)/(b-a),0,1);return x*x*(3-2*x)};
+const fmt=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const jdOf=(y,m,d)=>Date.UTC(y,m-1,d)/864e5+2440587.5;
+const jdDate=jd=>new Date((jd-2440587.5)*864e5);
+const fmtDate=jd=>jdDate(jd).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDur=d=>d<60?fmt(d,1)+' days':d<730?fmt(d/30.44,1)+' months':fmt(d/365.25,1)+' years';
+
+/* =====================================================================
+   1. ASTRODYNAMICS ENGINE
+   Planet positions: NASA JPL SSD "Keplerian Elements for Approximate Positions of the
+   Major Planets", Table 1 (1800-2050). Transfers: Lambert's problem (universal variables).
+   Flybys: patched conics. Everything planar in the ecliptic.
+   ===================================================================== */
+const G0=9.80665, ISP=320, AU=1.495978707e11, MU_SUN=1.32712440018e20, MU_EARTH=3.986004418e14, DAY=86400, CL=299792458;
+const R_LEO=6678e3, R_MOON=384400e3;
+const EL={
+ mercury:[0.38709927,0.20563593,7.00497902,252.2503235,77.45779628,48.33076593,3.7e-7,0.00001906,-0.00594749,149472.67411175,0.16047689,-0.12534081],
+ venus:[0.72333566,0.00677672,3.39467605,181.9790995,131.60246718,76.67984255,0.0000039,-0.00004107,-0.0007889,58517.81538729,0.00268329,-0.27769418],
+ earth:[1.00000261,0.01671123,-0.00001531,100.46457166,102.93768193,0,0.00000562,-0.00004392,-0.01294668,35999.37244981,0.32327364,0],
+ mars:[1.52371034,0.0933941,1.84969142,-4.55343205,-23.94362959,49.55953891,0.00001847,0.00007882,-0.00813131,19140.30268499,0.44441088,-0.29257343],
+ jupiter:[5.202887,0.04838624,1.30439695,34.39644051,14.72847983,100.47390909,-0.00011607,-0.00013253,-0.00183714,3034.74612775,0.21252668,0.20469106],
+ saturn:[9.53667594,0.05386179,2.48599187,49.95424423,92.59887831,113.66242448,-0.0012506,-0.00050991,0.00193609,1222.49362201,-0.41897216,-0.28867794],
+ uranus:[19.18916464,0.04725744,0.77263783,313.23810451,170.9542763,74.01692503,-0.00196176,-0.00004397,-0.00242939,428.48202785,0.40805281,0.04240589],
+ neptune:[30.06992276,0.00859048,1.77004347,-55.12002969,44.96476227,131.78422574,0.00026291,0.00005105,0.00035372,218.45945325,-0.32241464,-0.00508664],
+ pluto:[39.48211675,0.2488273,17.14001206,238.92903833,224.06891629,110.30393684,-0.00031596,0.0000517,0.00004818,145.20780515,-0.04062942,-0.01183482]};
+const PH={
+ mercury:{name:'Mercury',mu:2.2032e13,R:2439.7e3,vR:1.1,tex:'mercury',k:3,col:'#a8a097'},
+ venus:{name:'Venus',mu:3.24859e14,R:6051.8e3,vR:1.8,tex:'venus',k:6,col:'#e8cf9a'},
+ earth:{name:'Earth',mu:3.986004418e14,R:6371e3,vR:2.1,tex:'earth',k:8,col:'#3d7ea6'},
+ mars:{name:'Mars',mu:4.282837e13,R:3389.5e3,vR:1.5,tex:'mars',k:5,col:'#c8643c'},
+ jupiter:{name:'Jupiter',mu:1.26686534e17,R:69911e3,vR:6,tex:'jupiter',k:60,col:'#d29a68',giant:1},
+ saturn:{name:'Saturn',mu:3.7931187e16,R:58232e3,vR:5,tex:'saturn',k:40,col:'#e3c98f',giant:1,ring:1},
+ uranus:{name:'Uranus',mu:5.793939e15,R:25362e3,vR:3.4,tex:'uranus',k:18,col:'#9ad8dc',giant:1},
+ neptune:{name:'Neptune',mu:6.836529e15,R:24622e3,vR:3.3,tex:'neptune',k:18,col:'#4f6fd8',giant:1},
+ pluto:{name:'Pluto',mu:8.71e11,R:1188e3,vR:1,tex:'pluto',k:2,col:'#d9b99a'}};
+for(const k in PH){const p=PH[k];p.rMin=p.giant?p.R*1.1:p.R+300e3;p.rCap=p.giant?p.R*1.2:p.R*1.15;p.eCap=p.giant?.97:.9;p.a=EL[k][0]}
+const d2r=Math.PI/180;
+function ephemPos(id,jd){const v=EL[id],T=(jd-2451545)/36525;
+  const a=v[0]+v[6]*T,e=v[1]+v[7]*T,I=(v[2]+v[8]*T)*d2r,L=v[3]+v[9]*T,wb=v[4]+v[10]*T,Om=(v[5]+v[11]*T)*d2r,w=wb*d2r-Om;
+  let M=(((L-wb)%360)+540)%360-180;M*=d2r;let E=M+e*Math.sin(M);for(let i=0;i<12;i++)E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+  const xp=a*(Math.cos(E)-e),yp=a*Math.sqrt(1-e*e)*Math.sin(E),cw=Math.cos(w),sw=Math.sin(w),cO=Math.cos(Om),sO=Math.sin(Om),cI=Math.cos(I);
+  return[((cw*cO-sw*sO*cI)*xp+(-sw*cO-cw*sO*cI)*yp)*AU,((cw*sO+sw*cO*cI)*xp+(-sw*sO+cw*cO*cI)*yp)*AU]}
+function ephemVel(id,jd){const a=ephemPos(id,jd-.5),b=ephemPos(id,jd+.5);return[(b[0]-a[0])/DAY,(b[1]-a[1])/DAY]}
+function stC(z){if(z>1e-6){const s=Math.sqrt(z);return(1-Math.cos(s))/z}if(z<-1e-6){const s=Math.sqrt(-z);return(Math.cosh(s)-1)/(-z)}return .5-z/24}
+function stS(z){if(z>1e-6){const s=Math.sqrt(z);return(s-Math.sin(s))/(s*s*s)}if(z<-1e-6){const s=Math.sqrt(-z);return(Math.sinh(s)-s)/(s*s*s)}return 1/6-z/120}
+function lambert(r1,r2,dt,mu){const R1=Math.hypot(r1[0],r1[1]),R2=Math.hypot(r2[0],r2[1]),cz=r1[0]*r2[1]-r1[1]*r2[0];
+  let dth=Math.acos(clamp((r1[0]*r2[0]+r1[1]*r2[1])/(R1*R2),-1,1));if(cz<0)dth=TAU-dth;if(Math.abs(Math.sin(dth))<1e-5||!(dt>0))return null;
+  const A=Math.sin(dth)*Math.sqrt(R1*R2/(1-Math.cos(dth))),sm=Math.sqrt(mu);
+  const y=z=>R1+R2+A*(z*stS(z)-1)/Math.sqrt(stC(z));
+  const T=z=>{const yz=y(z);if(yz<0)return-1;const x=Math.sqrt(yz/stC(z));return(x*x*x*stS(z)+A*Math.sqrt(yz))/sm};
+  let lo=-150,hi=4*Math.PI*Math.PI-1e-7;
+  if(A>0&&y(lo)<0){let a=lo,b=hi;for(let i=0;i<90;i++){const m=(a+b)/2;if(y(m)<0)a=m;else b=m}lo=b}
+  if(T(lo)>dt)return null;
+  let a=lo,b=hi;for(let i=0;i<100;i++){const m=(a+b)/2;if(T(m)<dt)a=m;else b=m}
+  const z=(a+b)/2,yz=y(z),f=1-yz/R1,g=A*Math.sqrt(yz/mu),gd=1-yz/R2;if(!isFinite(g)||g===0)return null;
+  return{v1:[(r2[0]-f*r1[0])/g,(r2[1]-f*r1[1])/g],v2:[(gd*r2[0]-r1[0])/g,(gd*r2[1]-r1[1])/g]}}
+function propagate(r0,v0,dt,mu){const R0=Math.hypot(r0[0],r0[1]),V0=Math.hypot(v0[0],v0[1]),vr0=(r0[0]*v0[0]+r0[1]*v0[1])/R0,al=2/R0-V0*V0/mu,sm=Math.sqrt(mu);
+  if(dt<=0)return{r:r0.slice(),v:v0.slice()};
+  let x=al>0?sm*al*dt:sm*dt/R0;
+  for(let i=0;i<80;i++){const z=al*x*x,C=stC(z),S=stS(z);const F=R0*vr0/sm*x*x*C+(1-al*R0)*x*x*x*S+R0*x-sm*dt;const dF=R0*vr0/sm*x*(1-al*x*x*S)+(1-al*R0)*x*x*C+R0;const s=F/dF;x-=s;if(Math.abs(s)<1e-9*Math.max(1,Math.abs(x)))break}
+  const z=al*x*x,C=stC(z),S=stS(z),f=1-x*x/R0*C,g=dt-x*x*x*S/sm,r=[f*r0[0]+g*v0[0],f*r0[1]+g*v0[1]],R=Math.hypot(r[0],r[1]);
+  const fd=sm/(R*R0)*(al*x*x*x*S-x),gd=1-x*x/R*C;return{r,v:[fd*r0[0]+gd*v0[0],fd*r0[1]+gd*v0[1]]}}
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],nrm=a=>Math.hypot(a[0],a[1]);
+const launchDv=vinf=>Math.sqrt(vinf*vinf+2*MU_EARTH/R_LEO)-Math.sqrt(MU_EARTH/R_LEO);
+function captureDv(id,vinf){const p=PH[id],rp=p.rCap;return Math.sqrt(vinf*vinf+2*p.mu/rp)-Math.sqrt(p.mu*(1+p.eCap)/rp)}
+function evalRoute(seq,jd0,tofs,capture){
+  const jds=[jd0];for(const t of tofs)jds.push(jds[jds.length-1]+t);
+  const P=seq.map((id,i)=>({id,jd:jds[i],r:ephemPos(id,jds[i]),v:ephemVel(id,jds[i])}));
+  const legs=[];for(let i=0;i<seq.length-1;i++){const L=lambert(P[i].r,P[i+1].r,tofs[i]*DAY,MU_SUN);if(!L)return{ok:false,bad:i,seq,jds,tofs,P};legs.push(Object.assign(L,{r1:P[i].r,r2:P[i+1].r,dt:tofs[i]*DAY,jd0:jds[i],jd1:jds[i+1],from:seq[i],to:seq[i+1]}))}
+  const vinf0=nrm(sub(legs[0].v1,P[0].v)),c3=(vinf0/1000)**2;
+  const flybys=[];let dvFly=0,crash=0,free=0;
+  for(let i=1;i<seq.length-1;i++){const p=PH[seq[i]],vi=sub(legs[i-1].v2,P[i].v),vo=sub(legs[i].v1,P[i].v),a=nrm(vi),b=nrm(vo);
+    const delta=Math.acos(clamp((vi[0]*vo[0]+vi[1]*vo[1])/(a*b),-1,1)),vm=(a+b)/2,s=Math.sin(delta/2);
+    const rp=s>1e-7?p.mu/(vm*vm)*(1/s-1):1e12,rUse=Math.max(rp,p.rMin);
+    const powered=Math.abs(Math.sqrt(b*b+2*p.mu/rUse)-Math.sqrt(a*a+2*p.mu/rUse));
+    const tooClose=rp<p.rMin;if(tooClose)crash++;
+    const gain=nrm(legs[i].v1)-nrm(legs[i-1].v2);if(gain>0)free+=gain;
+    flybys.push({id:seq[i],idx:i,jd:jds[i],vin:a,vout:b,delta,rp,rpR:rp/p.R,tooClose,powered,gain});dvFly+=powered}
+  const last=P[P.length-1],vinfA=nrm(sub(legs[legs.length-1].v2,last.v));
+  const dvCap=capture?captureDv(last.id,vinfA):0,dvSc=dvFly+dvCap+100,dvL=launchDv(vinf0);
+  return{ok:true,seq,jds,tofs,P,legs,c3,vinf0,flybys,dvFly,vinfA,dvCap,dvSc,dvL,dvEq:dvL+dvSc,tof:jds[jds.length-1]-jd0,crash,free,capture}}
+function hohmann(id,capture){const r1=AU,r2=PH[id].a*AU,a=(r1+r2)/2,v1=Math.sqrt(MU_SUN/r1)*(Math.sqrt(2*r2/(r1+r2))-1),v2=Math.sqrt(MU_SUN/r2)*(1-Math.sqrt(2*r1/(r1+r2)));
+  const dvL=launchDv(Math.abs(v1)),dvC=capture?captureDv(id,Math.abs(v2)):0;return{c3:(v1/1000)**2,vinfA:Math.abs(v2),dvL,dvCap:dvC,dvEq:dvL+dvC+100,tof:Math.PI*Math.sqrt(a*a*a/MU_SUN)/DAY}}
+function hohT(a,b){const r1=PH[a].a*AU,r2=PH[b].a*AU,s=(r1+r2)/2;return Math.PI*Math.sqrt(s*s*s/MU_SUN)/DAY}
+function tofRange(a,b){const t=hohT(a,b);return[Math.max(25,Math.round(t*.3)),Math.round(t*(PH[a].a<2&&PH[b].a<2?3.2:2.2))]}
+function routeScore(r,timeW){if(!r.ok)return 1e9;let J=r.dvEq+timeW*r.tof/365.25;for(const f of r.flybys)if(f.tooClose)J+=2500+4000*(PH[f.id].rMin/Math.max(f.rp,1)-1);return J}
+function tuneDE(seq,capture,opt={}){const lo=opt.jdMin,hi=opt.jdMax,timeW=opt.timeW??120,R=rng(opt.seed??7);
+  const rg=[[lo,hi],...seq.slice(0,-1).map((a,i)=>tofRange(a,seq[i+1]))],D=rg.length,NP=Math.max(30,12*D),G=Math.round(4200/NP*D/3);
+  const ev=c=>routeScore(evalRoute(seq,c[0],c.slice(1),capture),timeW);
+  const pop=[],fit=[];for(let i=0;i<NP;i++){const c=rg.map(r=>r[0]+R()*(r[1]-r[0]));pop.push(c);fit.push(ev(c))}
+  if(opt.start){pop[0]=opt.start.map((v,k)=>clamp(v,rg[k][0],rg[k][1]));fit[0]=ev(pop[0])}
+  for(let g=0;g<G;g++)for(let i=0;i<NP;i++){let a,b,c;do a=(R()*NP)|0;while(a===i);do b=(R()*NP)|0;while(b===i||b===a);do c=(R()*NP)|0;while(c===i||c===a||c===b);
+    const F=.5+R()*.4,jr=(R()*D)|0,t=pop[i].slice();for(let k=0;k<D;k++)if(R()<.85||k===jr){t[k]=pop[a][k]+F*(pop[b][k]-pop[c][k]);if(t[k]<rg[k][0]||t[k]>rg[k][1])t[k]=rg[k][0]+R()*(rg[k][1]-rg[k][0])}
+    const f=ev(t);if(f<=fit[i]){pop[i]=t;fit[i]=f}}
+  let bi=0;for(let i=1;i<NP;i++)if(fit[i]<fit[bi])bi=i;return polish(seq,capture,pop[bi],opt)}
+function polish(seq,capture,c0,opt){const timeW=opt.timeW??120,rg=[[opt.jdMin,opt.jdMax],...seq.slice(0,-1).map((a,i)=>tofRange(a,seq[i+1]))],n=rg.length;
+  const ev=c=>routeScore(evalRoute(seq,c[0],c.slice(1),capture),timeW);let c=c0.slice(),cj=ev(c),st=rg.map(r=>(r[1]-r[0])*.02);
+  for(let it=0;it<300&&st[0]>.2;it++){let imp=false;for(let k=0;k<n;k++)for(const s of[-1,1]){const d=c.slice();d[k]=clamp(d[k]+s*st[k],rg[k][0],rg[k][1]);const j=ev(d);if(j<cj){cj=j;c=d;imp=true}}if(!imp)st=st.map(x=>x*.5)}
+  return{jd0:Math.round(c[0]),tofs:c.slice(1).map(Math.round),J:cj}}
+const closeTxt=f=>{const p=PH[f.id],alt=(f.rp-p.R)/1e3;return f.rp<p.R?`${fmt(Math.max(0,f.rp)/1e3)} km from ${p.name}'s centre, which is inside the planet`:`only ${fmt(alt)} km above ${p.name}'s surface, below the safe minimum of ${p.giant?'10% of its radius':'300 km'} (atmosphere)`};
+const propFor=(dry,dv)=>dry*(Math.exp(dv/(ISP*G0))-1);
+
+/* =====================================================================
+   2. MISSION DATA (simplified engineering models, real physics laws)
+   ===================================================================== */
+const MISSIONS={
+  moon:{id:'moon',name:'Lunar Pathfinder',target:'moon',targetName:'Moon',diff:'Beginner',budget:260,goal:60,life:12,sunDist:1,earthDist:0.00257,insertion:0.85,rad:false,helio:false,
+    blurb:'Map the lunar south pole where water ice may hide in craters that never see sunlight. No route planning needed: learn spacecraft design first.',
+    routes:[{id:'direct',name:'Trans-lunar injection',note:'about 5 days',c3:-2,tof:4.98}],
+    real:'NASA\'s Lunar Reconnaissance Orbiter (launched 2009) has mapped the Moon for over 15 years with a laser altimeter (LOLA), cameras (LROC) and a thermal radiometer (Diviner): the same kinds of instruments you can choose here.'},
+  mars:{id:'mars',name:'Red Horizon',target:'mars',targetName:'Mars',diff:'Intermediate',budget:420,goal:70,life:24,sunDist:1.52,earthDist:1.5,rad:false,helio:true,capture:true,
+    blurb:'Find where buried ice shaped Mars. Here a flyby is a trap: test whether Venus really helps.',
+    real:'Mars Reconnaissance Orbiter (launched 2005) flew a direct transfer and carries a 3 m high-gain antenna, which is why it returned more data than earlier Mars missions combined. Its HiRISE camera, CRISM spectrometer and SHARAD radar match the camera, spectrometer and radar here.'},
+  jupiter:{id:'jupiter',name:'Jovian Deep Dive',target:'jupiter',targetName:'Jupiter',diff:'Advanced',budget:1100,goal:85,life:20,sunDist:5.2,earthDist:5.2,rad:true,helio:true,capture:true,
+    blurb:'Measure Jupiter\'s magnetic field and see beneath its clouds, inside lethal radiation belts. Flying direct needs a monster rocket.',
+    real:'Juno (launched 2011) used a deep space maneuver plus an Earth flyby in 2013 to reach Jupiter in 2016. It runs on three huge solar wings (about 14 kW at Earth, about 500 W at Jupiter) and protects its electronics inside a titanium radiation vault.'},
+  saturn:{id:'saturn',name:'Ringmaster',target:'saturn',targetName:'Saturn',diff:'Expert',budget:1300,goal:60,life:24,sunDist:9.54,earthDist:9.5,rad:false,helio:true,capture:true,
+    blurb:'Orbit Saturn to study its rings and moons. Sunlight there is 1/90 of Earth\'s and the trip takes years.',
+    real:'Cassini (launched 1997) needed four gravity assists (Venus twice, Earth and Jupiter) to reach Saturn in 2004, and ran on three RTGs because solar panels were impractical that far from the Sun.'},
+  neptune:{id:'neptune',name:'Blue Frontier',target:'neptune',targetName:'Neptune',diff:'Expert',budget:1800,goal:30,life:12,sunDist:30.07,earthDist:30,rad:false,helio:true,capture:true,
+    blurb:'Become the first spacecraft ever to orbit Neptune, 30 AU away, where a radio signal takes over 4 hours to arrive.',
+    real:'Only Voyager 2 has visited Neptune, in a 1989 flyby after gravity assists at Jupiter, Saturn and Uranus. No spacecraft has ever orbited it, partly because data rates out there are tiny: your instrument choice matters as much as your rocket.'}
+};
+const LEGENDS={
+  mariner10:{id:'mariner10',legend:true,name:'Mariner 10',year:1973,target:'mercury',targetName:'Mercury',seq:['earth','venus','mercury'],dates:[[1973,11,3],[1974,2,5],[1974,3,29]],launcher:'med',
+    story:'The very first planetary gravity assist: Venus bent the path inward toward Mercury.',
+    real:'Mariner 10 launched on 3 November 1973, flew past Venus on 5 February 1974 and reached Mercury on 29 March 1974, the first spacecraft ever to use a planet\'s gravity to change course.'},
+  voyager2:{id:'voyager2',legend:true,name:'Voyager 2',year:1977,target:'neptune',targetName:'Neptune',seq:['earth','jupiter','saturn','uranus','neptune'],dates:[[1977,8,20],[1979,7,9],[1981,8,26],[1986,1,24],[1989,8,25]],launcher:'heavy',
+    story:'The Grand Tour: a rare alignment let one spacecraft visit all four giant planets.',
+    real:'Voyager 2 launched on 20 August 1977 and flew past Jupiter (1979), Saturn (1981), Uranus (1986) and Neptune (1989). It is still the only spacecraft to have visited Uranus and Neptune.'},
+  newhorizons:{id:'newhorizons',legend:true,name:'New Horizons',year:2006,target:'pluto',targetName:'Pluto',seq:['earth','jupiter','pluto'],dates:[[2006,1,19],[2007,2,28],[2015,7,14]],launcher:'heavy',
+    story:'A record-fast launch plus a Jupiter boost reached Pluto in under ten years.',
+    real:'New Horizons launched on 19 January 2006 at the highest launch speed of any spacecraft, gained speed at Jupiter on 28 February 2007 and flew past Pluto on 14 July 2015.'}
+};
+const LAUNCHERS={
+  med:{name:'Medium lift',note:'Falcon 9-class',cost:70,m0:6000,k:22},
+  heavy:{name:'Heavy lift',note:'Falcon Heavy-class',cost:150,m0:15000,k:30},
+  super:{name:'Super heavy',note:'SLS-class',cost:900,m0:40000,k:35}};
+const BUS={
+  S:{name:'Small bus',mass:150,cost:40,load:80,slots:2,size:1.25},
+  M:{name:'Medium bus',mass:400,cost:90,load:150,slots:4,size:1.8},
+  L:{name:'Large bus',mass:900,cost:180,load:250,slots:6,size:2.5}};
+const POWER={
+  solarS:{name:'Solar · small',kind:'solar',p1:600,mass:20,cost:8,len:2.2,wid:1.1,wings:2},
+  solarM:{name:'Solar · medium',kind:'solar',p1:1500,mass:45,cost:15,len:3.6,wid:1.4,wings:2},
+  solarL:{name:'Solar · large',kind:'solar',p1:3000,mass:90,cost:30,len:5.2,wid:1.7,wings:2},
+  solarXL:{name:'Solar · Juno-class',kind:'solar',p1:14000,mass:340,cost:70,len:7.8,wid:2.3,wings:3},
+  rtg1:{name:'1× RTG (nuclear)',kind:'rtg',p:110,mass:45,cost:80,n:1},
+  rtg2:{name:'2× RTG (nuclear)',kind:'rtg',p:220,mass:90,cost:160,n:2},
+  rtg4:{name:'4× RTG (nuclear)',kind:'rtg',p:440,mass:180,cost:320,n:4}};
+const COMMS={
+  lga:{name:'Low-gain antenna',D:0.3,mass:2,cost:3,tx:20},
+  hga15:{name:'1.5 m dish',D:1.5,mass:15,cost:12,tx:60},
+  hga3:{name:'3 m dish',D:3,mass:40,cost:25,tx:100},
+  hga4:{name:'4 m dish',D:4,mass:105,cost:45,tx:120}};
+const INSTR={
+  cam:{name:'Camera',mass:25,pw:20,cost:25,data:8,img:1,val:{moon:3,mars:3,jupiter:2,saturn:3,neptune:2}},
+  spec:{name:'Imaging spectrometer',mass:30,pw:25,cost:35,data:4,img:1,val:{moon:2,mars:3,jupiter:2,saturn:3,neptune:2}},
+  radar:{name:'Sounding radar',mass:40,pw:60,cost:40,data:6,val:{moon:3,mars:3,jupiter:1,saturn:2,neptune:0}},
+  thermal:{name:'Thermal radiometer',mass:20,pw:15,cost:20,data:2,val:{moon:2,mars:2,jupiter:1,saturn:1,neptune:1}},
+  laser:{name:'Laser altimeter',mass:15,pw:30,cost:25,data:1,val:{moon:3,mars:2,jupiter:0,saturn:0,neptune:0}},
+  mag:{name:'Magnetometer',mass:8,pw:5,cost:10,data:0.1,val:{moon:1,mars:1,jupiter:4,saturn:3,neptune:3}},
+  mwr:{name:'Microwave radiometer',mass:45,pw:30,cost:40,data:1,val:{moon:0,mars:1,jupiter:4,saturn:2,neptune:2}}};
+const VAULT={mass:150,cost:30};
+const capacity=(L,c3)=>L.m0*Math.exp(-c3/L.k);
+const routeName=seq=>seq.map(id=>PH[id].name).join(' → ');
+
+function routeInfo(c){const M=MISSIONS[c.mission];
+  if(!M.helio){const R=M.routes[0];return{name:R.name,c3:R.c3,tof:R.tof,dvSc:(M.insertion+.1)*1000,ok:true,crash:0}}
+  const rr=c.rr;if(!rr||!rr.ok)return{name:rr?routeName(rr.seq):'No route',c3:999,tof:0,dvSc:9e4,ok:false,crash:0,rr};
+  return{name:routeName(rr.seq),c3:rr.c3,tof:rr.tof,dvSc:rr.dvSc,ok:true,crash:rr.crash,rr}}
+
+/* The whole engineering model. mods = consequences of in-flight events. */
+function compute(c,mods){
+  mods=mods||{};
+  const M=MISSIONS[c.mission],R=routeInfo(c),L=LAUNCHERS[c.launcher],B=BUS[c.bus],P=POWER[c.power],A=COMMS[c.comm];
+  const insts=c.inst.filter(id=>id!==mods.lost).map(id=>Object.assign({id},INSTR[id]));
+  const dry=B.mass+P.mass+A.mass+insts.reduce((s,i)=>s+i.mass,0)+(c.vault?VAULT.mass:0);
+  const margin=c.margin/100,dvNom=R.dvSc/1000,dv=dvNom*(1+margin);
+  const ratio=Math.exp(dv*1000/(ISP*G0)),prop=dry*(ratio-1),wet=dry+prop;               // Tsiolkovsky
+  const cap=R.ok?capacity(L,R.c3):0;
+  const pAvail=P.kind==='solar'?P.p1/(M.sunDist*M.sunDist)*0.85:P.p;                    // inverse square
+  const base=B.load+A.tx,iLoad=insts.reduce((s,i)=>s+i.pw,0),alive=pAvail>=base;
+  const duty=!alive?0:iLoad?clamp((pAvail-base)/iLoad,0,1):1;
+  const passes=Math.max(1,c.passes-(mods.passCut||0));
+  const rate=Math.min(6000,300*A.D*A.D/(M.earthDist*M.earthDist));                      // kbps ∝ D²/d²
+  const down=rate*passes*8*3600/1e6;                                                       // Gbit/day
+  const imgMul=mods.imgMul||1;
+  const gen=insts.reduce((s,i)=>s+i.data*(i.img?imgMul:1),0)*duty;
+  const dataFrac=gen>0?Math.min(1,Math.sqrt(down/gen)):1;                                  // onboard prioritization softens bottlenecks
+  const lifeMul=mods.lifeMul||1;
+  let lifeFrac=(M.rad&&!c.vault?0.25:1)*lifeMul;
+  const short=(mods.dvUse||0)>margin+1e-9;if(short)lifeFrac*=0.4;
+  const tofY=R.tof/365.25,lifeY=M.life/12*lifeMul;
+  const ops=(12+4*passes)*(tofY+lifeY);
+  const hw=L.cost+B.cost+P.cost+A.cost+insts.reduce((s,i)=>s+i.cost,0)+(c.vault?VAULT.cost:0);
+  const cost=hw+ops+(mods.extraCost||0),budget=M.budget*(mods.budgetMul||1);
+  const launchOK=R.ok&&wet<=cap,crashed=!!R.crash;
+  let sci=10*insts.reduce((s,i)=>s+i.val[M.id]*(i.img?imgMul:1),0)*duty*dataFrac*lifeFrac*(mods.sciMul||1);
+  if(!launchOK||!alive||crashed)sci=0;
+  return{M,R,L,B,P,A,insts,dry,dv,dvNom,margin,prop,wet,cap,pAvail,base,iLoad,alive,duty,passes,rate,down,gen,dataFrac,lifeFrac,short,tofY,lifeY,ops,hw,cost,budget,sci,launchOK,crashed}}
+
+/* =====================================================================
+   3. SOUND (synthesized with Web Audio, no files)
+   ===================================================================== */
+const SFX=(()=>{let ac=null,master=null,on=true,rumble=null,noiseBuf=null;
+  const init=()=>{if(ac)return;try{ac=new(window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=.55;master.connect(ac.destination);
+    noiseBuf=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}catch(e){ac=null}};
+  addEventListener('pointerdown',()=>{init();if(ac&&ac.state==='suspended')ac.resume()},{capture:true});
+  const tone=(f,t,type='sine',g=.2,when=0,slide)=>{if(!ac||!on)return;const o=ac.createOscillator(),a=ac.createGain(),s=ac.currentTime+when;o.type=type;o.frequency.setValueAtTime(f,s);if(slide)o.frequency.exponentialRampToValueAtTime(slide,s+t);a.gain.setValueAtTime(0,s);a.gain.linearRampToValueAtTime(g,s+.01);a.gain.exponentialRampToValueAtTime(.0001,s+t);o.connect(a).connect(master);o.start(s);o.stop(s+t+.05)};
+  const noise=(t,type,f0,f1,g,q=1)=>{if(!ac||!on)return;const n=ac.createBufferSource();n.buffer=noiseBuf;n.loop=true;const fl=ac.createBiquadFilter();fl.type=type;fl.Q.value=q;const s=ac.currentTime;fl.frequency.setValueAtTime(f0,s);fl.frequency.exponentialRampToValueAtTime(f1,s+t);const a=ac.createGain();a.gain.setValueAtTime(0,s);a.gain.linearRampToValueAtTime(g,s+.05);a.gain.exponentialRampToValueAtTime(.0001,s+t);n.connect(fl).connect(a).connect(master);n.start(s);n.stop(s+t+.1)};
+  return{
+    get on(){return on},toggle(){on=!on;if(!on)this.rumble(false);return on},
+    click(){tone(660,.05,'triangle',.08)},
+    beep(hi){tone(hi?1320:880,.18,'square',.07)},
+    whoosh(){noise(1.6,'bandpass',260,2600,.5,1.2);tone(180,1.4,'sine',.12,0,420)},
+    chime(){[523,659,784,1047].forEach((f,i)=>tone(f,.5,'triangle',.12,i*.11))},
+    sad(){[392,330,262].forEach((f,i)=>tone(f,.5,'triangle',.1,i*.16))},
+    alert(){tone(740,.14,'square',.06);tone(554,.2,'square',.06,.16)},
+    boom(){noise(2.6,'lowpass',900,60,.9,.7);tone(90,1.6,'sine',.4,0,30)},
+    rumble(onOff){if(!ac)return;if(onOff&&on&&!rumble){const n=ac.createBufferSource();n.buffer=noiseBuf;n.loop=true;const fl=ac.createBiquadFilter();fl.type='lowpass';fl.frequency.value=220;const a=ac.createGain();a.gain.value=0;a.gain.linearRampToValueAtTime(.75,ac.currentTime+1.2);n.connect(fl).connect(a).connect(master);n.start();rumble={n,a,fl}}
+      else if(!onOff&&rumble){const r=rumble;rumble=null;r.a.gain.cancelScheduledValues(ac.currentTime);r.a.gain.setValueAtTime(r.a.gain.value,ac.currentTime);r.a.gain.linearRampToValueAtTime(0,ac.currentTime+.8);r.n.stop(ac.currentTime+.9)}},
+    rumbleLevel(v){if(rumble)rumble.fl.frequency.value=160+v*500}}})();
+document.addEventListener('click',e=>{if(e.target.closest('button'))SFX.click()});
+$('btnSound').onclick=()=>{$('btnSound').textContent=SFX.toggle()?'🔊':'🔇'};
+
+/* =====================================================================
+   4. RENDERER + TOON LOOK (cel shading with ink outlines)
+   ===================================================================== */
+const canvas=$('c');let renderer;
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:false})}catch(e){$('err').hidden=false;throw e}
+const small=Math.min(innerWidth,innerHeight)<700;
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,small?1.5:2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const camera=new THREE.PerspectiveCamera(38,1,0.1,8000);
+const GRAD=(()=>{const t=new THREE.DataTexture(new Uint8Array([110,185,255]),3,1,THREE.RedFormat);t.minFilter=t.magFilter=THREE.NearestFilter;t.generateMipmaps=false;t.needsUpdate=true;return t})();
+const INK=0x2b2622,outlineMats=new Map();
+function OUT(t,col){const k=t+'|'+(col||INK);if(!outlineMats.has(k))outlineMats.set(k,new THREE.ShaderMaterial({uniforms:{t:{value:t},c:{value:new THREE.Color(col||INK)}},side:THREE.BackSide,
+  vertexShader:'uniform float t;void main(){vec3 p=position+normal*t;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}',
+  fragmentShader:'uniform vec3 c;void main(){gl_FragColor=vec4(c,1.0);}'}));return outlineMats.get(k)}
+const smoothCache=new WeakMap();
+function smoothGeo(g){if(smoothCache.has(g))return smoothCache.get(g);const s=g.clone(),pos=s.attributes.position,n=s.attributes.normal,map=new Map(),key=i=>pos.getX(i).toFixed(3)+','+pos.getY(i).toFixed(3)+','+pos.getZ(i).toFixed(3);
+  for(let i=0;i<pos.count;i++){const k=key(i);let v=map.get(k);if(!v){v=new THREE.Vector3();map.set(k,v)}v.x+=n.getX(i);v.y+=n.getY(i);v.z+=n.getZ(i)}
+  const tmp=new THREE.Vector3();for(let i=0;i<pos.count;i++){tmp.copy(map.get(key(i))).normalize();n.setXYZ(i,tmp.x,tmp.y,tmp.z)}smoothCache.set(g,s);return s}
+function toonMat(color,o={}){return new THREE.MeshToonMaterial({color,gradientMap:GRAD,map:o.map||null,emissive:o.emissive||0,side:o.side||THREE.FrontSide,transparent:!!o.opacity,opacity:o.opacity||1})}
+function mk(geo,color,o={}){const m=new THREE.Mesh(geo,o.mat||toonMat(color,o));m.castShadow=o.cast!==false;m.receiveShadow=o.recv!==false;
+  if(o.outline!==false){const ol=new THREE.Mesh(smoothGeo(geo),OUT(o.t||0.035,o.oc));ol.castShadow=false;ol.receiveShadow=false;ol.raycast=()=>{};m.add(ol)}return m}
+const at=(m,x,y,z,rx,ry,rz)=>{m.position.set(x,y,z);if(rx||ry||rz)m.rotation.set(rx||0,ry||0,rz||0);return m};
+function ctex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t}
+const glowTex=ctex(128,128,(x,w)=>{const g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.25,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,w,w)});
+const ringTex=ctex(128,128,(x,w)=>{x.strokeStyle='rgba(255,255,255,1)';x.lineWidth=6;x.beginPath();x.arc(64,64,56,0,TAU);x.stroke()});
+function sprite(color,size,opacity=1,tex=glowTex){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,color,transparent:true,opacity,depthWrite:false,blending:THREE.AdditiveBlending}));s.scale.setScalar(size);return s}
+const foilTex=ctex(256,256,(x,w,h)=>{const r=rng(5);x.fillStyle='#e2b23c';x.fillRect(0,0,w,h);for(let i=0;i<90;i++){x.strokeStyle=r()<.5?'rgba(255,236,160,.55)':'rgba(150,100,20,.35)';x.lineWidth=1+r()*3;x.beginPath();const a=r()*w,b=r()*h;x.moveTo(a,b);x.lineTo(a+(r()-.5)*90,b+(r()-.5)*90);x.stroke()}});
+const cellTex=ctex(256,128,(x,w,h)=>{x.fillStyle='#2c4a86';x.fillRect(0,0,w,h);x.strokeStyle='#8fb0e8';x.lineWidth=2;for(let i=0;i<=8;i++){x.beginPath();x.moveTo(i*w/8,0);x.lineTo(i*w/8,h);x.stroke()}for(let j=0;j<=4;j++){x.beginPath();x.moveTo(0,j*h/4);x.lineTo(w,j*h/4);x.stroke()}});
+const texCache={};
+function planetTex(kind){if(texCache[kind])return texCache[kind];return texCache[kind]=ctex(512,256,(x,w,h)=>{const r=rng(kind.length*97+kind.charCodeAt(0));
+  const blob=(col,n,s)=>{x.fillStyle=col;for(let i=0;i<n;i++){const cx=r()*w,cy=h*.15+r()*h*.7;x.beginPath();for(let k=0;k<9;k++){const a=k/9*TAU,rr=s*(.5+r()*.7);x.lineTo(cx+Math.cos(a)*rr*1.6,cy+Math.sin(a)*rr)}x.fill()}};
+  const bands=(B,mn,mx)=>{let y=0;while(y<h){const bh=mn+r()*(mx-mn);x.fillStyle=B[(r()*B.length)|0];x.fillRect(0,y,w,bh);y+=bh}};
+  const craters=(col,n)=>{for(let i=0;i<n;i++){x.fillStyle=col;x.beginPath();x.arc(r()*w,r()*h,3+r()*16,0,TAU);x.fill()}};
+  if(kind==='earth'){x.fillStyle='#3d7ea6';x.fillRect(0,0,w,h);blob('#7fb069',9,34);blob('#d9b77a',5,18);x.fillStyle='#f4f1ea';x.fillRect(0,0,w,14);x.fillRect(0,h-14,w,14);x.strokeStyle='rgba(255,255,255,.75)';x.lineWidth=5;x.lineCap='round';for(let i=0;i<16;i++){const yy=r()*h,xx=r()*w;x.beginPath();x.moveTo(xx,yy);x.quadraticCurveTo(xx+40,yy-10,xx+90,yy+4);x.stroke()}}
+  else if(kind==='mars'){x.fillStyle='#c8643c';x.fillRect(0,0,w,h);blob('#9a4527',10,26);blob('#de8a5a',8,16);x.fillStyle='#f6eee4';x.fillRect(0,0,w,10);x.fillRect(0,h-8,w,8)}
+  else if(kind==='jupiter'){bands(['#f1e2c8','#c98b5a','#e8c9a0','#b8744a','#f4e9d6','#d29a68','#e3c49b'],10,36);x.fillStyle='#c4573b';x.beginPath();x.ellipse(w*.62,h*.64,30,15,0,0,TAU);x.fill()}
+  else if(kind==='saturn'){bands(['#f2e2b8','#e3c98f','#d8b878','#f6ebcc','#e8d39e'],12,40)}
+  else if(kind==='uranus'){bands(['#a6e0e3','#9ad8dc','#b3e6e8'],30,60)}
+  else if(kind==='neptune'){bands(['#4f6fd8','#4466cc','#5a7ae0'],20,50);x.fillStyle='#2c3f8f';x.beginPath();x.ellipse(w*.4,h*.6,26,13,0,0,TAU);x.fill();x.strokeStyle='rgba(255,255,255,.6)';x.lineWidth=4;x.beginPath();x.moveTo(w*.6,h*.35);x.lineTo(w*.75,h*.33);x.stroke()}
+  else if(kind==='pluto'){x.fillStyle='#d9b99a';x.fillRect(0,0,w,h);x.fillStyle='#f4e9dc';x.beginPath();x.arc(w*.45,h*.55,40,0,TAU);x.arc(w*.55,h*.5,44,0,TAU);x.fill();blob('#8a5a44',5,20)}
+  else if(kind==='mercury'){x.fillStyle='#a8a097';x.fillRect(0,0,w,h);craters('rgba(90,84,78,.4)',90)}
+  else if(kind==='venus'){x.fillStyle='#e8cf9a';x.fillRect(0,0,w,h);blob('#d9b77a',10,30)}
+  else if(kind==='moon'){x.fillStyle='#c9c4cf';x.fillRect(0,0,w,h);craters('rgba(120,112,130,.35)',70)}
+  else if(kind==='skymoon'){x.fillStyle='#d2c4ee';x.fillRect(0,0,w,h);craters('rgba(150,130,205,.45)',70)}})}
+
+/* =====================================================================
+   5. EARTH SCENE: desert spaceport at golden hour
+   ===================================================================== */
+const earth=new THREE.Scene();earth.fog=new THREE.Fog(0xf0dcc4,260,1300);
+earth.add(new THREE.Mesh(new THREE.SphereGeometry(2400,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,
+  uniforms:{top:{value:new THREE.Color(0x8fa8e6)},mid:{value:new THREE.Color(0xc6d3f2)},hor:{value:new THREE.Color(0xf6dcc0)}},
+  vertexShader:'varying vec3 vp;void main(){vp=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:'uniform vec3 top,mid,hor;varying vec3 vp;void main(){float h=vp.y;vec3 c=mix(hor,mid,smoothstep(-.02,.18,h));c=mix(c,top,smoothstep(.18,.75,h));gl_FragColor=vec4(c,1.0);}'})));
+earth.add(new THREE.HemisphereLight(0xd8e4ff,0xe6c49a,1.35));
+const sunL=new THREE.DirectionalLight(0xfff0da,2.6);sunL.position.set(160,190,140);sunL.castShadow=true;sunL.shadow.mapSize.set(small?1024:2048,small?1024:2048);
+Object.assign(sunL.shadow.camera,{left:-140,right:140,top:140,bottom:-140,near:10,far:700});sunL.shadow.bias=-.0005;sunL.shadow.normalBias=.4;sunL.target.position.set(-25,0,-50);earth.add(sunL,sunL.target);
+const SAND=0xe6c99c,SAND2=0xd9b585,CLAY=0xd39b72,WALL=0xf2e4c9,WHITE=0xf3eee4,ORANGE=0xe2772e,RED=0xc9452f,TEAL=0x3f8f8a;
+{const g=new THREE.Mesh(new THREE.CircleGeometry(2200,64),toonMat(SAND));g.rotation.x=-Math.PI/2;g.receiveShadow=true;earth.add(g);const r=rng(11);
+  for(let i=0;i<26;i++){const a=r()*TAU,d=110+r()*380,s=14+r()*30;const m=mk(new THREE.SphereGeometry(s,16,10),r()<.5?SAND:SAND2,{t:.5,outline:d<250});m.scale.y=.22;m.position.set(Math.cos(a)*d,-s*.05,Math.sin(a)*d);if(Math.hypot(m.position.x+40,m.position.z+100)>60)earth.add(m)}
+  for(let i=0;i<14;i++){const a=-0.4-r()*2.6,d=560+r()*500,rad=30+r()*70,h=40+r()*90;const m=mk(new THREE.CylinderGeometry(rad*.82,rad,h,9),CLAY,{t:1.2,recv:false,cast:false});m.position.set(Math.cos(a)*d,h/2,Math.sin(a)*d);earth.add(m)}
+  const skm=new THREE.Mesh(new THREE.SphereGeometry(230,40,24),new THREE.MeshBasicMaterial({map:planetTex('skymoon'),fog:false}));skm.position.set(-950,520,-1500);skm.rotation.y=1;earth.add(skm);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(232,3,6,90),new THREE.MeshBasicMaterial({color:0xb7a6dd,fog:false}));ring.position.copy(skm.position);ring.lookAt(0,0,0);earth.add(ring);
+  for(let i=0;i<9;i++){const cg=new THREE.Group();const a=-0.6-r()*2.2,d=700+r()*500;for(let k=0;k<5;k++){const s=26+r()*28;const m=new THREE.Mesh(new THREE.SphereGeometry(s,14,10),new THREE.MeshToonMaterial({color:0xffffff,gradientMap:GRAD,fog:false}));m.position.set(k*34-68+r()*12,r()*14,r()*20);m.scale.y=.6;cg.add(m)}cg.position.set(Math.cos(a)*d,190+r()*230,Math.sin(a)*d);cg.lookAt(0,cg.position.y,0);earth.add(cg)}}
+{const B=new THREE.Group();earth.add(B);
+  const tw=new THREE.Group();at(tw,-95,0,-35);B.add(tw);
+  tw.add(at(mk(new THREE.CylinderGeometry(9,11,44,24),WALL,{t:.25}),0,22,0));tw.add(at(mk(new THREE.CylinderGeometry(15,15,4,28),WHITE,{t:.25}),0,46,0));
+  tw.add(at(mk(new THREE.CylinderGeometry(12,13,8,28),0xa6cbd8,{t:.25}),0,52,0));tw.add(at(mk(new THREE.SphereGeometry(12,28,12,0,TAU,0,Math.PI/2),TEAL,{t:.25}),0,56,0));
+  tw.add(at(mk(new THREE.CylinderGeometry(.5,.5,14,8),WHITE,{t:.1}),0,74,0));
+  for(let i=0;i<12;i++){const a=i/12*TAU;tw.add(at(mk(new THREE.BoxGeometry(1.4,40,1.4),0xe9d8b8,{t:.12}),Math.cos(a)*10.6,20,Math.sin(a)*10.6))}
+  const hall=new THREE.Group();at(hall,-150,0,-120,0,.5,0);B.add(hall);
+  hall.add(at(mk(new THREE.BoxGeometry(70,30,40),WALL,{t:.3}),0,15,0));hall.add(at(mk(new THREE.BoxGeometry(50,14,32),WHITE,{t:.3}),-6,37,0));
+  hall.add(at(mk(new THREE.CylinderGeometry(13,13,1.2,36),0xe9d8b8,{t:.2}),12,30,20.8,Math.PI/2,0,0));
+  for(let i=0;i<12;i++){const sp=mk(new THREE.BoxGeometry(.7,24,.7),0xc9b58f,{outline:false});sp.position.set(12,30,21.6);sp.rotation.z=i/12*Math.PI;hall.add(sp)}
+  hall.add(at(mk(new THREE.SphereGeometry(7,20,10,0,TAU,0,Math.PI/2),TEAL,{t:.2}),-20,44,0));
+  for(let i=0;i<4;i++)hall.add(at(mk(new THREE.BoxGeometry(5,9,1),0x8fb3c4,{t:.15}),-28+i*9,6,20.4));
+  for(let i=0;i<4;i++)B.add(at(mk(new THREE.BoxGeometry(60-i*12,4,30-i*5),i%2?WHITE:WALL,{t:.25}),-140,2+i*4,-40));
+  for(const[x,z,s]of[[-60,-150,10],[-30,-175,7],[20,-160,12]]){B.add(at(mk(new THREE.CylinderGeometry(s,s,s*.6,24),WALL,{t:.2}),x,s*.3,z));B.add(at(mk(new THREE.SphereGeometry(s,24,10,0,TAU,0,Math.PI/2),0xe9e1cf,{t:.2}),x,s*.6,z))}
+  for(const[x,z,h]of[[-70,-90,60],[30,-120,48],[-200,-60,70]]){B.add(at(mk(new THREE.CylinderGeometry(.9,1.4,h,8),WHITE,{t:.15}),x,h/2,z));B.add(at(sprite(0xff9a5a,8,.9),x,h+1,z))}
+  const dish=mk(new THREE.SphereGeometry(16,28,10,0,TAU,0,.75),0xf3eee4,{side:THREE.DoubleSide,t:.2});dish.rotation.set(Math.PI*.72,0,.3);at(dish,40,24,-60);B.add(dish);
+  B.add(at(mk(new THREE.CylinderGeometry(2,3,18,10),WALL,{t:.2}),40,9,-60))}
+const PAD=new THREE.Vector3(-40,0,-100);
+{const L=new THREE.Group();L.position.copy(PAD);earth.add(L);
+  L.add(at(mk(new THREE.CylinderGeometry(26,28,3,40),0xcdc3b2,{t:.2}),0,1.5,0));L.add(at(mk(new THREE.BoxGeometry(9,3.4,40),0x6b6460,{t:.15}),0,1.6,18));
+  const tw=new THREE.Group();at(tw,-10,3,0);L.add(tw);const H=58;
+  for(const[x,z]of[[-2.5,-2.5],[2.5,-2.5],[-2.5,2.5],[2.5,2.5]])tw.add(at(mk(new THREE.BoxGeometry(.8,H,.8),RED,{t:.08}),x,H/2,z));
+  for(let y=4;y<H;y+=4){for(const s of[-1,1]){tw.add(at(mk(new THREE.BoxGeometry(5.8,.4,.4),RED,{outline:false}),0,y,s*2.5));tw.add(at(mk(new THREE.BoxGeometry(.4,.4,5.8),RED,{outline:false}),s*2.5,y,0))}
+    const d=mk(new THREE.BoxGeometry(.3,5.6,.3),0xa23624,{outline:false});d.position.set(0,y-2,2.5);d.rotation.z=y%8?.7:-.7;tw.add(d)}
+  for(const y of[22,34,46])tw.add(at(mk(new THREE.BoxGeometry(7.5,.8,1.6),WHITE,{t:.08}),5.4,y,0));
+  tw.add(at(mk(new THREE.CylinderGeometry(.3,.3,8,6),WHITE,{t:.05}),0,H+4,0));L.add(at(sprite(0xff6a3a,6),-10,H+11,0));
+  for(const[x,z]of[[22,-16],[27,-8]]){L.add(at(mk(new THREE.SphereGeometry(4,18,12),WHITE,{t:.12}),x,7,z));L.add(at(mk(new THREE.CylinderGeometry(.5,.5,6,6),0x7a7470,{t:.05}),x,3,z))}
+  L.add(at(mk(new THREE.CylinderGeometry(3,3,26,16),WHITE,{t:.12}),-22,13,14));L.add(at(mk(new THREE.SphereGeometry(3,16,8,0,TAU,0,Math.PI/2),ORANGE,{t:.12}),-22,26,14))}
+const STAND=new THREE.Vector3(0,0,0);
+{const S=new THREE.Group();earth.add(S);
+  const hz=ctex(512,64,(x,w,h)=>{for(let i=0;i<16;i++){x.fillStyle=i%2?'#2b2622':'#f0c34a';x.beginPath();x.moveTo(i*32,0);x.lineTo(i*32+32,0);x.lineTo(i*32+16,h);x.lineTo(i*32-16,h);x.fill()}});
+  S.add(at(mk(new THREE.CylinderGeometry(9,9.6,1.2,48),0xe9e1cf,{t:.08}),0,.6,0));
+  const rim=new THREE.Mesh(new THREE.CylinderGeometry(9.02,9.02,.5,48,1,true),toonMat(0xffffff,{map:hz}));rim.position.y=1.05;S.add(rim);
+  S.add(at(mk(new THREE.CylinderGeometry(6,6.3,.5,40),0xcfd6dc,{t:.06}),0,1.45,0));S.add(at(mk(new THREE.CylinderGeometry(.9,1.6,2,16),0x9aa0a8,{t:.06}),0,2.6,0));
+  for(let i=0;i<3;i++){const a=i/3*TAU+1.2;const arm=new THREE.Group();arm.position.set(Math.cos(a)*15,0,Math.sin(a)*15);arm.rotation.y=-a;S.add(arm);
+    arm.add(at(mk(new THREE.BoxGeometry(1.2,12,1.2),ORANGE,{t:.06}),0,6,0));arm.add(at(mk(new THREE.BoxGeometry(4,.8,.8),ORANGE,{t:.05}),-2,11.6,0));arm.add(at(mk(new THREE.BoxGeometry(1.6,1,1.6),0x3a3a40,{t:.05}),-3.8,11,0))}
+  for(let i=0;i<4;i++){const a=i/4*TAU+.4;S.add(at(mk(new THREE.CylinderGeometry(.18,.18,9,6),0x5b5f66,{t:.04}),Math.cos(a)*11,4.5,Math.sin(a)*11));S.add(at(sprite(0xfff1c4,3,.9),Math.cos(a)*11,9.2,Math.sin(a)*11))}}
+
+/* =====================================================================
+   6. BUILDERS: spacecraft and rockets assembled from the player's choices
+   ===================================================================== */
+const disposeTree=o=>o.traverse(n=>{if(n.geometry&&!smoothCache.has(n.geometry))n.geometry.dispose()});
+function buildCraft(c){
+  const g=new THREE.Group(),B=BUS[c.bus],s=B.size,top=s*.45;
+  g.add(mk(new THREE.BoxGeometry(s,s*.9,s),0xe2b23c,{map:foilTex,t:.03}));
+  g.add(at(mk(new THREE.BoxGeometry(s*1.04,.08,s*1.04),0xd9d4c7,{t:.02}),0,top,0));g.add(at(mk(new THREE.BoxGeometry(s*1.04,.08,s*1.04),0xd9d4c7,{t:.02}),0,-top,0));
+  g.add(at(mk(new THREE.CylinderGeometry(s*.12,s*.26,s*.35,14,1,true),0x5b5f66,{side:THREE.DoubleSide,t:.02}),0,-top-s*.17,0));
+  let topY=top+.04;
+  if(c.vault){g.add(at(mk(new THREE.BoxGeometry(s*.7,.42,s*.7),0x8a929c,{t:.025}),0,topY+.21,0));topY+=.42}
+  const P=POWER[c.power];
+  if(P.kind==='solar'){const panelMat=toonMat(0xffffff,{map:cellTex,side:THREE.DoubleSide});
+    for(let w=0;w<P.wings;w++){const a=P.wings===3?w/3*TAU+Math.PI/2:w*Math.PI,wing=new THREE.Group();wing.rotation.y=a;g.add(wing);
+      wing.add(at(mk(new THREE.CylinderGeometry(.05,.05,.9,6),0xd9d4c7,{t:.012}),s/2+.4,0,0,0,0,Math.PI/2));
+      const segs=Math.max(1,Math.round(P.len/1.3)),sl=P.len/segs;
+      for(let k=0;k<segs;k++){const p=mk(new THREE.BoxGeometry(sl*.96,.05,P.wid),0,{mat:panelMat,t:.018});p.position.set(s/2+.85+sl*(k+.5),0,0);wing.add(p)}}}
+  else{for(let k=0;k<P.n;k++){const r=new THREE.Group(),side=k%2?1:-1,row=Math.floor(k/2);r.position.set(side*(s*.5+.9),-s*.15,(row-(Math.ceil(P.n/2)-1)/2)*1.1);r.rotation.z=side*.5;g.add(r);
+      r.add(at(mk(new THREE.CylinderGeometry(.04,.04,1,6),0xd9d4c7,{t:.01}),-side*.45,.22,0,0,0,1.07*-side));
+      r.add(at(mk(new THREE.CylinderGeometry(.24,.24,1.3,12),0x5b5f66,{t:.02}),side*.1,0,0));
+      for(let f=0;f<6;f++){const fin=mk(new THREE.BoxGeometry(.04,1.2,.34),0x6a6f78,{t:.01});const a=f/6*TAU;fin.position.set(side*.1+Math.cos(a)*.34,0,Math.sin(a)*.34);fin.rotation.y=-a;r.add(fin)}
+      r.add(at(sprite(0xff8a50,.9,.45),side*.1,0,0))}}
+  if(c.comm==='lga'){g.add(at(mk(new THREE.CylinderGeometry(.05,.05,.5,6),0xd9d4c7,{t:.01}),s*.3,topY+.25,s*.3));g.add(at(mk(new THREE.ConeGeometry(.16,.3,12),WHITE,{t:.015}),s*.3,topY+.62,s*.3))}
+  else{const dia=c.comm==='hga4'?Math.max(3.4,s*1.4):c.comm==='hga3'?Math.max(2.6,s*1.15):Math.max(1.4,s*.75),th=.62,Rs=dia/(2*Math.sin(th));
+    const d=mk(new THREE.SphereGeometry(Rs,36,10,0,TAU,0,th),0xf6f1e6,{side:THREE.DoubleSide,t:.03});d.rotation.x=Math.PI;d.position.y=topY+.18+Rs;g.add(d);
+    g.add(at(mk(new THREE.CylinderGeometry(.12,.2,.36,10),0xd9d4c7,{t:.015}),0,topY+.18,0));
+    g.add(at(mk(new THREE.CylinderGeometry(.03,.03,dia*.42,6),0xd9d4c7,{t:.008}),0,topY+.18+dia*.2,0));
+    g.add(at(mk(new THREE.ConeGeometry(.09,.18,10),0x5b5f66,{t:.01}),0,topY+.18+dia*.42,0,Math.PI,0,0))}
+  const slots=[[0,-.2,1],[.28,.18,1],[-.28,.18,1],[0,-.2,-1],[.28,.18,-1],[-.28,.18,-1]];
+  c.inst.forEach((id,i)=>{const sl=slots[i]||slots[0],z=sl[2]*(s/2),x=sl[0]*s,y=sl[1]*s,f=sl[2];let m;
+    if(id==='cam'){m=new THREE.Group();m.add(at(mk(new THREE.CylinderGeometry(.2,.2,.55,16),0xf3eee4,{t:.015}),0,0,0,Math.PI/2,0,0));m.add(at(mk(new THREE.CylinderGeometry(.14,.14,.05,16),0x1d2433,{t:.008}),0,0,.29,Math.PI/2,0,0))}
+    else if(id==='spec'){m=mk(new THREE.BoxGeometry(.5,.36,.4),0x3a3f4a,{t:.015});m.add(at(mk(new THREE.BoxGeometry(.3,.2,.06),0x8fd3ff,{t:.008}),0,0,.22))}
+    else if(id==='radar'){m=new THREE.Group();m.add(mk(new THREE.BoxGeometry(.3,.3,.3),0xd9d4c7,{t:.012}));m.add(at(mk(new THREE.CylinderGeometry(.025,.025,s*2.6,6),0xf3eee4,{t:.008}),0,0,.18,0,0,Math.PI/2))}
+    else if(id==='thermal'){m=mk(new THREE.BoxGeometry(.34,.34,.3),0xf3eee4,{t:.012});m.add(at(mk(new THREE.CylinderGeometry(.09,.09,.06,12),0x2b2622,{t:.006}),0,0,.16,Math.PI/2,0,0))}
+    else if(id==='laser'){m=new THREE.Group();for(let k=0;k<3;k++)m.add(at(mk(new THREE.CylinderGeometry(.07,.07,.4,10),0x9aa0a8,{t:.01}),(k-1)*.17,0,0,Math.PI/2,0,0));m.add(at(sprite(0x5cff9a,.35,.8),0,0,.25))}
+    else if(id==='mag'){m=new THREE.Group();const L=s*1.8;m.add(at(mk(new THREE.CylinderGeometry(.025,.025,L,6),0xd9d4c7,{t:.006}),0,0,L/2,Math.PI/2,0,0));m.add(at(mk(new THREE.BoxGeometry(.18,.18,.18),0x3f8f8a,{t:.01}),0,0,L))}
+    else if(id==='mwr'){m=new THREE.Group();m.add(mk(new THREE.BoxGeometry(.7,.7,.06),0xe9e1cf,{t:.012}));for(let k=0;k<4;k++)m.add(at(mk(new THREE.BoxGeometry(.12,.55,.03),0x9a6b45,{outline:false}),(k-1.5)*.16,0,.04))}
+    m.position.set(x,y,z+f*.06);if(f<0)m.rotation.y=Math.PI;g.add(m)});
+  g.userData.span=Math.max(s*1.6,P.kind==='solar'?(s+P.len*2):s*3);return g}
+function buildRocket(id){
+  const g=new THREE.Group(),boosters=[];
+  const lathe=(pts,col,o)=>mk(new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p[0],p[1])),28),col,o);
+  const nose=(r,h)=>{const p=[];for(let i=0;i<=12;i++){const t=i/12;p.push([r*Math.pow(1-t*t,.55),t*h])}p[p.length-1][0]=0.001;return p};
+  const bells=(r,n,y,par)=>{for(let i=0;i<n;i++){const a=i/n*TAU,rr=n>1?r*.55:0;par.add(at(mk(new THREE.CylinderGeometry(r*.22,r*.42,r*.7,14,1,true),0x3a3a40,{side:THREE.DoubleSide,t:.05}),Math.cos(a)*rr,y-r*.35,Math.sin(a)*rr))}};
+  let R=1.4;
+  if(id==='super'){R=2.6;g.add(at(mk(new THREE.CylinderGeometry(R,R,40,32),0xe08a3c,{t:.12}),0,20,0));
+    for(let k=0;k<4;k++)g.add(at(mk(new THREE.CylinderGeometry(R*1.005,R*1.005,.5,32),0xc2692a,{outline:false}),0,6+k*9,0));
+    g.add(at(mk(new THREE.CylinderGeometry(R*.8,R,3,32),WHITE,{t:.1}),0,41.5,0));g.add(at(mk(new THREE.CylinderGeometry(R*.8,R*.8,7,32),WHITE,{t:.1}),0,46.5,0));
+    g.add(at(lathe(nose(R*.95,11),WHITE,{t:.1}),0,50,0));bells(R,4,0,g);
+    for(const s of[-1,1]){const b=new THREE.Group();b.position.x=s*(R+1.25);g.add(b);boosters.push(b);
+      b.add(at(mk(new THREE.CylinderGeometry(1.2,1.2,38,20),WHITE,{t:.08}),0,19,0));for(let k=0;k<4;k++)b.add(at(mk(new THREE.CylinderGeometry(1.21,1.21,.6,20),0x3a3a40,{outline:false}),0,6+k*9,0));
+      b.add(at(lathe(nose(1.2,5),WHITE,{t:.08}),0,38,0));bells(1.2,1,0,b)}}
+  else{g.add(at(mk(new THREE.CylinderGeometry(R,R,30,28),WHITE,{t:.1}),0,15,0));g.add(at(mk(new THREE.CylinderGeometry(R*1.01,R*1.01,3,28),0x2b2622,{t:.1}),0,31.5,0));
+    g.add(at(mk(new THREE.CylinderGeometry(R,R,6,28),WHITE,{t:.1}),0,36,0));g.add(at(mk(new THREE.CylinderGeometry(R*1.25,R,1.2,28),WHITE,{t:.1}),0,39.6,0));
+    g.add(at(mk(new THREE.CylinderGeometry(R*1.25,R*1.25,4,28),WHITE,{t:.1}),0,42.2,0));g.add(at(lathe(nose(R*1.25,7),WHITE,{t:.1}),0,44.2,0));
+    g.add(at(mk(new THREE.CylinderGeometry(R*1.02,R*1.02,1,28),ORANGE,{outline:false}),0,22,0));bells(R,9,0,g);
+    if(id==='heavy')for(const s of[-1,1]){const b=new THREE.Group();b.position.x=s*(R*2+.15);g.add(b);boosters.push(b);
+      b.add(at(mk(new THREE.CylinderGeometry(R,R,30,28),WHITE,{t:.1}),0,15,0));b.add(at(mk(new THREE.CylinderGeometry(R*1.02,R*1.02,1,28),ORANGE,{outline:false}),0,22,0));
+      b.add(at(lathe(nose(R,6),WHITE,{t:.1}),0,30,0));bells(R,9,0,b)}}
+  const plume=new THREE.Group();plume.visible=false;g.add(plume);
+  const fl=(r,parent)=>{const o=new THREE.Mesh(new THREE.ConeGeometry(r*1.25,r*9,18,1,true),new THREE.MeshBasicMaterial({color:0xff8a2e,transparent:true,opacity:.92,depthWrite:false,side:THREE.DoubleSide}));o.rotation.x=Math.PI;o.position.set(0,-r*5.1,0);o.renderOrder=2;
+    const i=new THREE.Mesh(new THREE.ConeGeometry(r*.7,r*5,14,1,true),new THREE.MeshBasicMaterial({color:0xffe47a,transparent:true,depthWrite:false,side:THREE.DoubleSide}));i.rotation.x=Math.PI;i.position.set(0,-r*3.1,0);i.renderOrder=3;
+    const gl=sprite(0xffb050,r*10,.9);gl.position.set(0,-r*1.5,0);parent.add(o,i,gl)};
+  fl(R,plume);boosters.forEach(b=>{const bp=new THREE.Group();b.add(bp);fl(id==='super'?1.2:R,bp);b.userData.plume=bp;bp.visible=false;b.userData.x0=Math.abs(b.position.x)});
+  g.userData={boosters,R,plume,w:id==='super'?R+2.5:id==='heavy'?R*3:R};return g}
+let craftStand=null,rocket=null;
+function rebuildModels(){if(craftStand){earth.remove(craftStand);disposeTree(craftStand)}craftStand=buildCraft(cfg);craftStand.position.set(STAND.x,5.6,STAND.z);earth.add(craftStand);
+  if(!rocket||rocket.userData.id!==cfg.launcher){if(rocket){earth.remove(rocket);disposeTree(rocket)}rocket=buildRocket(cfg.launcher);rocket.userData.id=cfg.launcher;rocket.position.set(PAD.x,3,PAD.z);earth.add(rocket)}}
+
+/* exhaust, smoke, explosion */
+const NP=900,pPos=new Float32Array(NP*3),pCol=new Float32Array(NP*3),pVel=new Float32Array(NP*3),pLife=new Float32Array(NP);
+const pGeo=new THREE.BufferGeometry();pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));pGeo.setAttribute('color',new THREE.BufferAttribute(pCol,3));
+const flame=new THREE.Points(pGeo,new THREE.PointsMaterial({size:7,map:glowTex,vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));flame.frustumCulled=false;flame.visible=false;earth.add(flame);
+const NSM=70,smoke=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),new THREE.MeshToonMaterial({color:0xf4efe6,gradientMap:GRAD}),NSM);smoke.frustumCulled=false;smoke.visible=false;earth.add(smoke);
+const sm=[];for(let i=0;i<NSM;i++)sm.push({x:0,y:-50,z:0,vx:0,vz:0,s:0,age:99});
+const D3=new THREE.Object3D();let pHead=0,smHead=0;
+function emit(n,x,y,z,spread,speed){for(let k=0;k<n;k++){const i=pHead=(pHead+1)%NP;pPos[i*3]=x+(Math.random()-.5)*spread;pPos[i*3+1]=y;pPos[i*3+2]=z+(Math.random()-.5)*spread;pVel[i*3]=(Math.random()-.5)*6;pVel[i*3+1]=-speed*(.7+Math.random()*.6);pVel[i*3+2]=(Math.random()-.5)*6;pLife[i]=1}}
+function stepParticles(dt){for(let i=0;i<NP;i++){if(pLife[i]<=0){pPos[i*3+1]=-999;continue}pLife[i]-=dt*1.6;const l=Math.max(0,pLife[i]);
+    pPos[i*3]+=pVel[i*3]*dt;pPos[i*3+1]+=pVel[i*3+1]*dt;pPos[i*3+2]+=pVel[i*3+2]*dt;if(pPos[i*3+1]<3.5){pPos[i*3+1]=3.5;pVel[i*3]*=1.08;pVel[i*3+2]*=1.08;pVel[i*3+1]=0}
+    pCol[i*3]=1;pCol[i*3+1]=.35+.6*l*l;pCol[i*3+2]=.12+.5*Math.pow(l,4)}
+  pGeo.attributes.position.needsUpdate=pGeo.attributes.color.needsUpdate=true;
+  for(let i=0;i<NSM;i++){const s=sm[i];s.age+=dt;s.x+=s.vx*dt;s.z+=s.vz*dt;s.y+=dt*1.2;s.vx*=.985;s.vz*=.985;const sc=s.age<6?s.s*(.4+s.age*.5):0;D3.position.set(s.x,s.y,s.z);D3.scale.set(sc,sc*.75,sc);D3.updateMatrix();smoke.setMatrixAt(i,D3.matrix)}
+  smoke.instanceMatrix.needsUpdate=true}
+function puff(x,z){const s=sm[smHead=(smHead+1)%NSM];const a=Math.random()*TAU,v=8+Math.random()*14;Object.assign(s,{x:x+Math.cos(a)*3,y:4,z:z+Math.sin(a)*3,vx:Math.cos(a)*v,vz:Math.sin(a)*v,s:2.5+Math.random()*3,age:0})}
+const fireball=new THREE.Group();fireball.visible=false;earth.add(fireball);
+const fbOuter=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshBasicMaterial({color:0xff7a2e,transparent:true,depthWrite:false}));
+const fbInner=new THREE.Mesh(new THREE.SphereGeometry(.65,20,14),new THREE.MeshBasicMaterial({color:0xffe27a,transparent:true,depthWrite:false}));
+const fbFlash=sprite(0xffd08a,1,1);fireball.add(fbOuter,fbInner,fbFlash);
+function burst(p){for(let k=0;k<420;k++){const i=pHead=(pHead+1)%NP;const a=Math.random()*TAU,u=Math.random(),sp=18+Math.random()*55,h=Math.sqrt(1-u*u);
+    pPos[i*3]=p.x;pPos[i*3+1]=p.y+1;pPos[i*3+2]=p.z;pVel[i*3]=Math.cos(a)*h*sp;pVel[i*3+1]=u*sp*1.1;pVel[i*3+2]=Math.sin(a)*h*sp;pLife[i]=1+Math.random()*.6}
+  for(let k=0;k<40;k++)puff(p.x,p.z);fireball.position.set(p.x,4,p.z);fireball.visible=true;fireball.userData.t=0}
+function stepFireball(dt){if(!fireball.visible)return;const t=fireball.userData.t+=dt;const g=sstep(0,.7,t)*(1+t*.25);fireball.scale.setScalar(2+g*20);fbOuter.material.opacity=1-sstep(.6,2.4,t);fbInner.material.opacity=1-sstep(.3,1.6,t);fbFlash.material.opacity=1-sstep(0,.9,t);fbFlash.scale.setScalar(4+t*10);fireball.position.y=4+t*5;if(t>2.6)fireball.visible=false}
+
+/* =====================================================================
+   7. SPACE SCENE: real solar system (JPL elements) or Earth-Moon system
+   ===================================================================== */
+const space=new THREE.Scene();
+space.add(new THREE.Mesh(new THREE.SphereGeometry(4000,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,
+  uniforms:{a:{value:new THREE.Color(0x161d48)},b:{value:new THREE.Color(0x3d2d6c)},c:{value:new THREE.Color(0x1a4c5e)}},
+  vertexShader:'varying vec3 vp;void main(){vp=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:'uniform vec3 a,b,c;varying vec3 vp;void main(){float t=vp.y*.5+.5;vec3 col=mix(b,a,smoothstep(.2,.8,t));col=mix(col,c,smoothstep(.55,1.,vp.x*.5+.5)*.5);gl_FragColor=vec4(col,1.0);}'})));
+for(const[n,sz,op]of[[2600,1.4,.8],[500,2.6,1]]){const p=new Float32Array(n*3),r=rng(n);for(let i=0;i<n;i++){const u=r()*2-1,a=r()*TAU,s=Math.sqrt(1-u*u);p[i*3]=3200*s*Math.cos(a);p[i*3+1]=3200*u;p[i*3+2]=3200*s*Math.sin(a)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));space.add(new THREE.Points(g,new THREE.PointsMaterial({size:sz,sizeAttenuation:false,color:0xfff4dc,transparent:true,opacity:op,map:glowTex,depthWrite:false})))}
+{const r=rng(3);for(let i=0;i<7;i++){const a=r()*TAU,e=(r()-.3)*1.2,n=sprite([0x7a4fd0,0x2fa6b8,0xd05f8a][i%3],1200+r()*900,.13);n.position.set(2700*Math.cos(a)*Math.cos(e),2700*Math.sin(e),2700*Math.sin(a)*Math.cos(e));space.add(n)}}
+space.add(new THREE.AmbientLight(0x9aa0d8,.7));
+const sunPoint=new THREE.PointLight(0xfff0d0,4,0,0);space.add(sunPoint);
+const sunDir=new THREE.DirectionalLight(0xfff0d0,2.4);space.add(sunDir,sunDir.target);
+const dyn=new THREE.Group();space.add(dyn);
+/* Geodesic heritage: a spacetime grid that sags under every mass, computed on the GPU */
+const NW=11;
+const gridMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,
+  uniforms:{w:{value:Array.from({length:NW},()=>new THREE.Vector4())},R:{value:200},amp:{value:1}},
+  vertexShader:`uniform vec4 w[${NW}];uniform float amp;varying float vd;varying float vr;void main(){vec3 p=position;float d=0.;for(int i=0;i<${NW};i++){vec2 q=p.xz-w[i].xy;d+=w[i].z/sqrt(dot(q,q)+w[i].w);}d*=amp;p.y-=d;vd=d;vr=length(position.xz);gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
+  fragmentShader:'uniform float R;varying float vd;varying float vr;void main(){float f=1.-smoothstep(R*.7,R,vr);vec3 c=mix(vec3(.55,.52,.92),vec3(1.,.72,.45),clamp(vd*.05,0.,1.));gl_FragColor=vec4(c,.42*f);}'});
+let grid=null;
+function buildGrid(R){if(grid){dyn.remove(grid);grid.geometry.dispose()}const N=64,S=150,pos=[];
+  for(let a=0;a<2;a++)for(let i=0;i<=N;i++){const u=-R+2*R*i/N;for(let k=0;k<S;k++){const v0=-R+2*R*k/S,v1=-R+2*R*(k+1)/S;if(a)pos.push(u,0,v0,u,0,v1);else pos.push(v0,0,u,v1,0,u)}}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));grid=new THREE.LineSegments(g,gridMat);grid.position.y=-4;grid.frustumCulled=false;gridMat.uniforms.R.value=R;return grid}
+function labelSprite(t,col){const tex=ctex(320,64,(x,w,h)=>{x.font='800 28px "Plus Jakarta Sans",system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillStyle='rgba(20,27,58,.6)';const tw=Math.min(w-4,x.measureText(t).width+28);x.beginPath();x.roundRect((w-tw)/2,10,tw,44,22);x.fill();x.fillStyle=col;x.fillText(t,w/2,33)});
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,depthTest:false}));s.scale.set(10,2,1);s.renderOrder=5;return s}
+function planetMesh(id){const p=PH[id];const m=mk(new THREE.SphereGeometry(p.vR,36,20),0xffffff,{map:planetTex(p.tex),t:.06+p.vR*.02});
+  if(p.ring){const ring=new THREE.Mesh(new THREE.RingGeometry(p.vR*1.35,p.vR*2.2,64),new THREE.MeshBasicMaterial({color:0xe9d6a8,side:THREE.DoubleSide,transparent:true,opacity:.75}));ring.rotation.x=Math.PI/2.3;m.add(ring)}
+  if(id==='jupiter'){const ring=new THREE.Mesh(new THREE.RingGeometry(p.vR*1.3,p.vR*1.6,48),new THREE.MeshBasicMaterial({color:0xd9c3a0,side:THREE.DoubleSide,transparent:true,opacity:.25}));ring.rotation.x=Math.PI/2.2;m.add(ring)}
+  if(id==='uranus'){const ring=new THREE.Mesh(new THREE.RingGeometry(p.vR*1.5,p.vR*1.65,48),new THREE.MeshBasicMaterial({color:0xcfefff,side:THREE.DoubleSide,transparent:true,opacity:.5}));ring.rotation.y=Math.PI/2.1;m.add(ring)}
+  return m}
+const visR=r=>38*Math.pow(r/AU,.62);                                // compressed so Neptune and Mercury fit one screen
+const toVis=(p,y=0)=>{const r=Math.hypot(p[0],p[1]),s=r>0?visR(r)/r:0;return new THREE.Vector3(p[0]*s,y,-p[1]*s)};
+let SYS=null;
+function clearDyn(){dyn.traverse(n=>{if(n.geometry&&!smoothCache.has(n.geometry))n.geometry.dispose()});dyn.clear();grid=null}
+function setWells(list){const W=gridMat.uniforms.w.value;for(let i=0;i<NW;i++){const e=list[i];if(e)W[i].set(e[0],e[1],e[2],e[3]);else W[i].set(0,0,0,1)}}
+
+/* ---- heliocentric system ---- */
+function setupHelio(rr,jdView){
+  clearDyn();const ids=['mercury','venus','earth','mars','jupiter','saturn','uranus','neptune'];if(rr&&rr.seq.includes('pluto'))ids.push('pluto');
+  SYS={mode:'helio',bodies:{},rr,legsVis:[]};sunPoint.visible=true;sunDir.visible=false;
+  const sun=mk(new THREE.SphereGeometry(8,40,24),0xffd27a,{mat:new THREE.MeshBasicMaterial({color:0xffd98a}),t:.25,oc:0xe2772e});dyn.add(sun);dyn.add(sprite(0xffb050,70,.85));dyn.add(sprite(0xfff0c0,28,1));
+  let rMax=0;const tgt=rr?rr.seq[rr.seq.length-1]:'jupiter';
+  for(const id of ids){const p=PH[id],m=planetMesh(id);dyn.add(m);const per=TAU*Math.sqrt((p.a*AU)**3/MU_SUN)/DAY,pts=[];
+    for(let i=0;i<=180;i++)pts.push(toVis(ephemPos(id,(jdView||2461000)+per*i/180)));
+    const inRoute=rr&&rr.seq.includes(id);
+    const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:id===tgt?0xffc98a:inRoute?0xcfd6ff:0xa9b4e8,transparent:true,opacity:id===tgt?.8:inRoute?.5:.22}));dyn.add(ln);
+    const lab=labelSprite(p.name,id===tgt?'#ffc98a':'#cfd6ff');dyn.add(lab);
+    SYS.bodies[id]={id,m,lab,ln};if(inRoute||id===tgt)rMax=Math.max(rMax,visR(p.a*AU*(1+EL[id][1])))}
+  rMax=Math.max(rMax,visR(1.6*AU));SYS.rMax=rMax;
+  dyn.add(buildGrid(Math.max(rMax*1.35,80)));
+  SYS.route=new THREE.Group();dyn.add(SYS.route);
+  const cr=buildCraft(cfg);cr.scale.setScalar(.45);SYS.craft=new THREE.Group();SYS.craft.add(cr);SYS.craft.add(sprite(0xffb36b,7,.9));dyn.add(SYS.craft);
+  SYS.pulse=sprite(0xffe2a0,1,0,ringTex);dyn.add(SYS.pulse);
+  // Newton arrows
+  SYS.arrS=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),5,0xf5a524,1.6,1);SYS.arrP=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),5,0xff6a3a,1.6,1);dyn.add(SYS.arrS,SYS.arrP);
+  if(rr&&rr.ok)drawRoute(rr);
+  placeHelio(jdView||(rr?rr.jds[0]:2461000))}
+function drawRoute(rr){const G=SYS.route;G.traverse(n=>{if(n.geometry)n.geometry.dispose()});G.clear();SYS.rr=rr;if(!rr||!rr.ok){SYS.done=null;return}
+  const N=90,all=[];const cols=[0xffa24a,0x5fd4c4,0xffd36b,0xc59bff,0x9fe07a];
+  rr.legs.forEach((L,li)=>{const pts=[];for(let i=0;i<=N;i++){const s=propagate(L.r1,L.v1,L.dt*i/N,MU_SUN);pts.push(toVis(s.r,.05))}all.push(...(li?pts.slice(1):pts));
+    const g=new THREE.BufferGeometry().setFromPoints(pts);const d=new THREE.Line(g,new THREE.LineDashedMaterial({color:cols[li%cols.length],dashSize:1.4,gapSize:.9,transparent:true,opacity:.75}));d.computeLineDistances();G.add(d)});
+  SYS.N=N;const dg=new THREE.BufferGeometry().setFromPoints(all);SYS.done=new THREE.Line(dg,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.95}));dg.setDrawRange(0,0);G.add(SYS.done);
+  rr.P.forEach((P,i)=>{if(i===0)return;const id=P.id,ghost=new THREE.Mesh(new THREE.SphereGeometry(PH[id].vR*1.05,24,14),new THREE.MeshBasicMaterial({color:new THREE.Color(PH[id].col),transparent:true,opacity:.28,depthWrite:false}));
+    ghost.position.copy(toVis(P.r));G.add(ghost);const fb=rr.flybys.find(f=>f.idx===i);const bad=fb&&fb.tooClose;
+    const ring=sprite(bad?0xff5a4a:i===rr.P.length-1?0xffc98a:0x8ff0c8,PH[id].vR*4.2,.9,ringTex);ring.position.copy(ghost.position);G.add(ring);
+    const lab=labelSprite(`${PH[id].name} · ${fmtDate(P.jd)}`,bad?'#ff8a7a':'#e9fff4');lab.position.copy(ghost.position).y+=PH[id].vR+2.6;lab.userData.ghost=1;G.add(lab)});
+  const l0=labelSprite(`Launch · ${fmtDate(rr.jds[0])}`,'#ffd9a8');l0.position.copy(toVis(rr.P[0].r)).y+=8;l0.userData.ghost=1;G.add(l0)}
+function placeHelio(jd){const wells=[[0,0,420,90]];
+  for(const id in SYS.bodies){const b=SYS.bodies[id],p=toVis(ephemPos(id,jd));b.m.position.copy(p);b.m.rotation.y+=.01;
+    const sc=Math.max(1,camera.position.distanceTo(p)/110);b.lab.scale.set(10*sc,2*sc,1);b.lab.position.copy(p).y+=PH[id].vR+1.8*sc;wells.push([p.x,p.z,PH[id].k,PH[id].vR*PH[id].vR*2])}
+  setWells(wells);
+  if(SYS.route)SYS.route.children.forEach(o=>{if(o.userData.ghost){o.visible=phase==='route';const sc=Math.max(1,camera.position.distanceTo(o.position)/110);o.scale.set(12*sc,2.4*sc,1)}})}
+function helioState(jd){const rr=SYS.rr;let li=0;for(let i=0;i<rr.legs.length;i++)if(jd>=rr.legs[i].jd0)li=i;const L=rr.legs[li],dt=clamp((jd-L.jd0)*DAY,0,L.dt);const s=propagate(L.r1,L.v1,dt,MU_SUN);return{r:s.r,v:s.v,li,f:dt/L.dt}}
+
+/* ---- Earth-Moon system (Lunar mission) ---- */
+function kepler(M,e){let E=e<.8?M:Math.PI;for(let k=0;k<12;k++)E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));return E}
+function setupMoon(){clearDyn();SYS={mode:'moon',mu:MU_EARTH,map:r=>6+(r-R_LEO)/(R_MOON-R_LEO)*54};sunPoint.visible=false;sunDir.visible=true;sunDir.position.set(300,120,200);
+  const e=mk(new THREE.SphereGeometry(5,40,24),0xffffff,{map:planetTex('earth'),t:.12});dyn.add(e);dyn.add(sprite(0x7fc8ff,15,.35));
+  const m=mk(new THREE.SphereGeometry(2.2,36,20),0xffffff,{map:planetTex('moon'),t:.1});dyn.add(m);const lab=labelSprite('Moon','#ffc98a');dyn.add(lab);
+  const pts=[];for(let i=0;i<=160;i++){const a=i/160*TAU;pts.push(new THREE.Vector3(60*Math.cos(a),0,-60*Math.sin(a)))}dyn.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffc98a,transparent:true,opacity:.75})));
+  const a=(R_LEO+R_MOON)/2;SYS.tof=Math.PI*Math.sqrt(a*a*a/MU_EARTH)/DAY;SYS.w=Math.sqrt(MU_EARTH/R_MOON**3);SYS.ph=Math.PI-SYS.w*SYS.tof*DAY;SYS.moon={m,lab};SYS.rMax=60;
+  const N=300,p2=[];for(let i=0;i<=N;i++){const s=moonCraft(SYS.tof*i/N);p2.push(s.pos)}
+  const pg=new THREE.BufferGeometry().setFromPoints(p2);const full=new THREE.Line(pg,new THREE.LineDashedMaterial({color:0xffffff,dashSize:1.2,gapSize:.9,transparent:true,opacity:.4}));full.computeLineDistances();dyn.add(full);
+  SYS.done=new THREE.Line(pg.clone(),new THREE.LineBasicMaterial({color:0xffa24a}));SYS.done.geometry.setDrawRange(0,1);dyn.add(SYS.done);SYS.N=N;
+  dyn.add(buildGrid(80));const cr=buildCraft(cfg);cr.scale.setScalar(.55);SYS.craft=new THREE.Group();SYS.craft.add(cr);SYS.craft.add(sprite(0xffb36b,6,.9));dyn.add(SYS.craft);
+  SYS.pulse=sprite(0xffe2a0,1,0,ringTex);dyn.add(SYS.pulse);placeMoon(0)}
+function moonCraft(t){const a=(R_LEO+R_MOON)/2,e=(R_MOON-R_LEO)/(R_MOON+R_LEO),n=Math.sqrt(MU_EARTH/(a*a*a)),E=kepler(n*Math.min(t,SYS.tof)*DAY,e);
+  const nu=2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2),Math.sqrt(1-e)*Math.cos(E/2)),r=a*(1-e*Math.cos(E)),R=SYS.map(r);return{r,v:Math.sqrt(MU_EARTH*(2/r-1/a)),pos:new THREE.Vector3(R*Math.cos(nu),.05,-R*Math.sin(nu))}}
+function placeMoon(t){const a=SYS.ph+SYS.w*t*DAY,p=new THREE.Vector3(60*Math.cos(a),0,-60*Math.sin(a));SYS.moon.m.position.copy(p);const sc=Math.max(1,camera.position.distanceTo(p)/90);SYS.moon.lab.scale.set(10*sc,2*sc,1);SYS.moon.lab.position.copy(p).y+=3+1.6*sc;
+  setWells([[0,0,120,40],[p.x,p.z,12,10]])}
+
+/* =====================================================================
+   8. CAMERA RIG (drag rotate, scroll zoom, smooth)
+   ===================================================================== */
+const rig={tx:0,ty:5.5,tz:0,d:16,yaw:.75,pitch:.2},des=Object.assign({},rig);let shake=0;
+function fit(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}fit();addEventListener('resize',fit);
+function placeCam(dt){const k=1-Math.exp(-dt*3.2);for(const p in rig)rig[p]+=(des[p]-rig[p])*k;
+  const cp=Math.cos(rig.pitch);camera.position.set(rig.tx+rig.d*Math.sin(rig.yaw)*cp,rig.ty+rig.d*Math.sin(rig.pitch),rig.tz+rig.d*Math.cos(rig.yaw)*cp);
+  if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake}camera.lookAt(rig.tx,rig.ty,rig.tz)}
+const shot=o=>Object.assign(des,o);
+let drag=null,autoSpin=true;
+canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);autoSpin=false});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;des.yaw-=(e.clientX-drag.x)*.006;des.pitch=clamp(des.pitch+(e.clientY-drag.y)*.004,-.15,1.5);drag={x:e.clientX,y:e.clientY}});
+const endDrag=()=>{drag=null};canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
+canvas.addEventListener('wheel',e=>{e.preventDefault();des.d=clamp(des.d*Math.exp(clamp(e.deltaY,-120,120)*.0012),3,2600)},{passive:false});
+
+/* =====================================================================
+   9. GAME STATE + DESIGN UI
+   ===================================================================== */
+const STEPS=['Brief','Design','Route','Launch','Cruise','Operations','Report'];
+let phase='brief',cfg=null,res=null,mods={},launchRes=null,active=earth,legend=null,histRR=null;
+const say=m=>{$('log').textContent=m};
+function setPhase(p){phase=p;const map={brief:0,design:1,route:2,launch:3,cruise:4,ops:5,report:6};const i=map[p];
+  $('steps').innerHTML=STEPS.map((s,k)=>{if(legend&&(k===1||k===5))return'';return`<li class="step ${k===i?'on':k<i?'done':''}">${k<i?'✓ ':''}${s}</li>`}).join('');
+  $('panel').hidden=$('review').hidden=p!=='design';$('rpanel').hidden=$('rsum').hidden=p!=='route';$('kpis').hidden=!(p==='design'||(p==='route'&&!legend));
+  $('hud').hidden=!(p==='cruise'||p==='ops');$('hint').hidden=!(p==='design'||p==='brief'||p==='cruise'||p==='route');tutShow()}
+function defaults(id){return{mission:id,launcher:'med',bus:'M',power:'solarM',comm:'hga15',passes:1,inst:['cam','spec'],vault:false,margin:10,route:null,rr:null}}
+const JD_MIN=jdOf(2026,1,1),JD_MAX=jdOf(2040,12,31);
+function jdBounds(){return legend?{lo:histRR.jds[0]-1200,hi:histRR.jds[0]+1200}:{lo:JD_MIN,hi:JD_MAX}}
+function evalCfgRoute(){const r=cfg.route;cfg.rr=evalRoute(r.seq,r.jd0,r.tofs,!legend);return cfg.rr}
+function initDirectRoute(target){const b=jdBounds();const t=tuneDE(['earth',target],true,{jdMin:b.lo,jdMax:b.hi});cfg.route={seq:['earth',target],jd0:t.jd0,tofs:t.tofs};evalCfgRoute();cfg.base={dvEq:cfg.rr.dvEq,tof:cfg.rr.tof,c3:cfg.rr.c3}}
+
+// brief cards
+$('missions').innerHTML=Object.values(MISSIONS).map(m=>`
+  <button class="glass card-m text-left p-4 flex flex-col gap-2" data-m="${m.id}">
+    <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold uppercase tracking-[.1em] ${m.diff==='Beginner'?'text-ok':m.diff==='Intermediate'?'text-warn':'text-bad'}">${m.diff}</span><span class="text-[11px] font-bold text-muted">Target: ${m.targetName}</span></div>
+    <b class="text-lg font-extrabold tracking-tight">${m.name}</b>
+    <p class="text-muted leading-snug text-[12.5px]">${m.blurb}</p>
+    <div class="grid grid-cols-3 gap-1.5 mt-auto text-center">
+      <div class="bg-paper2 rounded-md py-1.5"><b class="block text-sm">$${fmt(m.budget)}M</b><span class="text-[10px] text-muted">budget</span></div>
+      <div class="bg-paper2 rounded-md py-1.5"><b class="block text-sm">${m.goal}</b><span class="text-[10px] text-muted">science goal</span></div>
+      <div class="bg-paper2 rounded-md py-1.5"><b class="block text-sm">${m.life} mo</b><span class="text-[10px] text-muted">operations</span></div>
+    </div>
+    <span class="btn primary text-center mt-1">Accept mission</span>
+  </button>`).join('');
+$('legends').innerHTML=Object.values(LEGENDS).map(l=>`
+  <button class="glass card-m text-left p-4 flex flex-col gap-2 bg-[#20284f]" style="background:#232b55;border-color:#3a4378" data-l="${l.id}">
+    <div class="flex items-center justify-between"><span class="text-[10.5px] font-extrabold uppercase tracking-[.1em] text-[#ffc98a]">${l.year}</span><span class="text-[11px] font-bold text-[#aab3e6]">${l.seq.length-2} flyby${l.seq.length>3?'s':''}</span></div>
+    <b class="text-lg font-extrabold tracking-tight text-white">${l.name}</b>
+    <p class="leading-snug text-[12.5px] text-[#cfd6ff]">${l.story}</p>
+    <div class="flex flex-wrap gap-1 mt-auto">${l.seq.map(id=>`<span class="text-[11px] font-bold text-white flex items-center gap-1"><i class="dot" style="background:${PH[id].col};border-color:#fff"></i>${PH[id].name}</span>`).join('<span class="text-[#8a93c8]">→</span>')}</div>
+    <span class="btn text-center mt-1" style="background:#ffc98a;border-color:#ffc98a">Fly this route</span>
+  </button>`).join('');
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>startMission(b.dataset.m));
+document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>startLegend(b.dataset.l));
+$('btnSchool').onclick=()=>{tutOn=true;tut=0;startMission('jupiter')};
+
+// KPI strip
+const KP=[['mass','Launch mass'],['power','Power at target'],['data','Data home / day'],['dv','Spacecraft Δv'],['cost','Total cost'],['tof','Flight time'],['sci','Science']];
+const kEl={};for(const[k,l]of KP){const d=document.createElement('div');d.className='kpi glass';d.innerHTML=`<div class="l">${l}</div><div class="v">0</div><div class="s">&nbsp;</div>`;$('kpis').appendChild(d);kEl[k]=d}
+const setK=(k,v,s,st)=>{const e=kEl[k];e.children[1].textContent=v;e.children[2].textContent=s;e.className='kpi glass'+(st?' '+st:'')};
+function updateKPIs(){const r=res,M=r.M;
+  setK('mass',fmt(r.wet)+' kg',r.R.ok?`rocket lifts ${fmt(r.cap)} kg at C3 ${fmt(r.R.c3,0)}`:'no valid route',!r.launchOK?'bad':r.wet>r.cap*.9?'warn':'ok');
+  setK('power',fmt(r.pAvail)+' W',`needs ${fmt(r.base+r.iLoad)} W at ${M.targetName}`,!r.alive?'bad':r.duty<1?'warn':'ok');
+  setK('data',fmt(r.down,r.down<1?2:1)+' Gb',`instruments make ${fmt(r.gen,1)} Gb`,r.dataFrac<.5?'bad':r.dataFrac<1?'warn':'ok');
+  setK('dv',fmt(r.dv,2)+' km/s',`${fmt(r.prop)} kg propellant`,'');
+  setK('cost','$'+fmt(r.cost)+'M',`budget $${fmt(r.budget)}M`,r.cost>r.budget?'bad':r.cost>r.budget*.92?'warn':'ok');
+  setK('tof',r.R.ok?fmtDur(r.R.tof):'—',M.helio?(cfg.route&&cfg.route.seq.length>2?`${cfg.route.seq.length-2} flyby route`:'direct route'):r.R.name,'');
+  setK('sci',fmt(r.sci),`goal ${M.goal}`,r.sci>=M.goal?'ok':r.sci>=M.goal*.7?'warn':'bad')}
+
+function group(title,key,items,note){const opts=items.map(([id,o,meta,dis])=>`<button class="opt ${cfg[key]===id?'sel':''} ${dis?'dis':''}" data-k="${key}" data-v="${id}" ${dis?'disabled':''}><b>${o}</b><span>${meta}</span></button>`).join('');
+  return`<div class="grp"><h4>${title}</h4>${note?`<p class="text-[11px] text-muted -mt-1 mb-1.5 leading-snug">${note}</p>`:''}<div class="grid grid-cols-2 gap-1.5">${opts}</div></div>`}
+function renderPanel(){const M=MISSIONS[cfg.mission],B=BUS[cfg.bus],R=routeInfo(cfg);let h='';
+  h+=group('Launch vehicle','launcher',Object.entries(LAUNCHERS).map(([id,L])=>[id,L.name,`${L.note} · $${L.cost}M · ${R.ok?fmt(capacity(L,R.c3))+' kg':'—'}`]),M.helio?`Capacity at the current route's launch energy (C3 ${fmt(R.c3,0)}). Flybys lower C3 in the next step.`:'');
+  h+=group('Spacecraft bus','bus',Object.entries(BUS).map(([id,b])=>[id,b.name,`${b.slots} slots · ${b.mass} kg · ${b.load} W · $${b.cost}M`]));
+  h+=group('Power','power',Object.entries(POWER).map(([id,p])=>[id,p.name,p.kind==='solar'?`${fmt(p.p1)} W at 1 AU · ${p.mass} kg · $${p.cost}M`:`${p.p} W anywhere · ${p.mass} kg · $${p.cost}M`]),'Sunlight at '+M.targetName+': '+(M.sunDist===1?'same as Earth':`1/${fmt(M.sunDist**2,0)} of Earth`)+'.');
+  h+=group('Antenna','comm',Object.entries(COMMS).map(([id,a])=>[id,a.name,`${a.mass} kg · ${a.tx} W · $${a.cost}M`]),`Signal strength falls with distance²: ${M.targetName} is ${M.earthDist<.01?'close':fmt(M.earthDist,1)+' AU'} away.`);
+  h+=`<div class="grp"><h4>Instruments <span class="normal-case tracking-normal font-bold text-ink">${cfg.inst.length}/${B.slots} slots</span></h4><div class="grid grid-cols-2 gap-1.5">${Object.entries(INSTR).map(([id,i])=>{const on=cfg.inst.includes(id),full=!on&&cfg.inst.length>=B.slots,v=i.val[M.id];
+    return`<button class="opt ${on?'sel':''} ${full?'dis':''}" data-i="${id}" ${full?'disabled':''}><b>${i.name}</b><span>${'★'.repeat(v)||'no value here'} · ${i.mass} kg · ${i.pw} W · ${i.data} Gb/d · $${i.cost}M</span></button>`}).join('')}</div></div>`;
+  h+=`<div class="grp"><h4>Operations</h4>
+    <div class="flex items-center justify-between"><label class="font-bold" for="r-pass">Deep Space Network passes</label><output class="font-extrabold text-accent" id="o-pass">${cfg.passes}/day</output></div>
+    <input id="r-pass" type="range" min="1" max="3" step="1" value="${cfg.passes}"><p class="text-[11px] text-muted leading-snug">Each 8-hour pass costs $4M per year.</p>
+    <div class="flex items-center justify-between mt-2"><label class="font-bold" for="r-mar">Propellant margin</label><output class="font-extrabold text-accent" id="o-mar">${cfg.margin}%</output></div>
+    <input id="r-mar" type="range" min="0" max="30" step="2" value="${cfg.margin}">
+    <label class="flex items-center gap-2 mt-2 font-bold cursor-pointer"><input type="checkbox" id="c-vault" ${cfg.vault?'checked':''} class="w-4 h-4 accent-[#1f6f6a]"> Radiation vault <span class="text-[11px] text-muted font-semibold">+${VAULT.mass} kg · $${VAULT.cost}M</span></label></div>`;
+  $('panel').innerHTML=h;
+  $('panel').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{cfg[b.dataset.k]=b.dataset.v;if(b.dataset.k==='bus')cfg.inst=cfg.inst.slice(0,BUS[cfg.bus].slots);say(b.querySelector('b').textContent+' selected');onDesign()});
+  $('panel').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const id=b.dataset.i;cfg.inst=cfg.inst.includes(id)?cfg.inst.filter(x=>x!==id):cfg.inst.concat(id);say(INSTR[id].name+(cfg.inst.includes(id)?' mounted':' removed'));onDesign()});
+  $('r-pass').oninput=e=>{cfg.passes=+e.target.value;onDesign(false)};$('r-mar').oninput=e=>{cfg.margin=+e.target.value;onDesign(false)};
+  $('c-vault').onchange=e=>{cfg.vault=e.target.checked;say(cfg.vault?'Radiation vault installed':'Radiation vault removed');onDesign()}}
+function onDesign(rebuild=true){res=compute(cfg);if(rebuild){renderPanel();rebuildModels()}else{$('o-pass').textContent=cfg.passes+'/day';$('o-mar').textContent=cfg.margin+'%'}updateDesignUI()}
+function designChecks(r){const M=r.M,C=[];const ck=(st,t)=>C.push(`<div class="chk ${st}"><i>${st==='ok'?'✓':st==='bad'?'✕':'!'}</i><span>${t}</span></div>`);
+  ck(r.launchOK?'ok':'bad',!r.R.ok?'No valid trajectory yet':r.launchOK?`Launcher lifts ${fmt(r.wet)} kg to C3 ${fmt(r.R.c3,0)} (limit ${fmt(r.cap)} kg)`:`Too heavy: ${fmt(r.wet)} kg, but the ${r.L.name.toLowerCase()} lifts only ${fmt(r.cap)} kg to C3 ${fmt(r.R.c3,0)}`);
+  ck(!r.alive?'bad':r.duty<1?'warn':'ok',!r.alive?`Power fails at ${M.targetName}: ${fmt(r.pAvail)} W < ${fmt(r.base)} W for bus + radio`:r.duty<1?`Instruments run only ${fmt(r.duty*100)}% of the time (${fmt(r.pAvail)} W available)`:`Power covers everything: ${fmt(r.pAvail)} W available`);
+  ck(r.dataFrac<.5?'bad':r.dataFrac<1?'warn':'ok',r.dataFrac<1?`Downlink bottleneck: only ${fmt(r.dataFrac*100)}% of the science value reaches Earth`:`All science data reaches Earth (${fmt(r.rate,r.rate<10?1:0)} kbps link)`);
+  if(M.rad)ck(cfg.vault?'ok':'bad',cfg.vault?'Electronics shielded from Jupiter\'s radiation':'No vault: radiation will kill the electronics early');
+  ck(r.cost<=r.budget?'ok':'bad',r.cost<=r.budget?`On budget: $${fmt(r.cost)}M of $${fmt(r.budget)}M`:`Over budget by $${fmt(r.cost-r.budget)}M`);
+  ck(cfg.margin>=8?'ok':'warn',cfg.margin>=8?`${cfg.margin}% propellant margin for surprises`:`Thin propellant margin (${cfg.margin}%): risky`);
+  if(r.crashed)ck('bad','The planned route crashes into a planet during a flyby');
+  if(!cfg.inst.length)ck('bad','No instruments: no science');return C.join('')}
+function updateDesignUI(){const r=res,M=r.M;updateKPIs();$('checks').innerHTML=designChecks(r);
+  $('sciTxt').textContent=`${fmt(r.sci)} / ${M.goal}`;$('sciBar').style.width=clamp(r.sci/M.goal*100,0,100)+'%';$('sciBar').className=r.sci>=M.goal?'bg-ok':'bg-warn';$('missionTag').textContent=M.name;
+  $('btnNext').textContent=M.helio?'Plan the route →':'Launch mission ▲';
+  $('reviewNote').textContent=M.helio?`Rocket and propellant numbers use the current route (${cfg.route.seq.length>2?routeName(cfg.route.seq):'flying direct'}). Gravity assists in the next step can change everything.`:'Predictions assume a calm cruise. Space rarely is: keep margins for surprises.'}
+function startMission(id){legend=null;histRR=null;cfg=defaults(id);if(MISSIONS[id].helio)initDirectRoute(MISSIONS[id].target);startDesign()}
+function startDesign(){$('brief').hidden=true;$('report').hidden=true;active=earth;onDesign();setPhase('design');resetLaunchScene();
+  shot({tx:STAND.x,ty:5.4,tz:STAND.z,d:clamp(craftStand.userData.span*1.9,15,30),pitch:.26});autoSpin=true;say(`${MISSIONS[cfg.mission].name}: design your spacecraft`)}
+$('btnBack').onclick=()=>goBrief();
+$('btnNext').onclick=()=>{if(MISSIONS[cfg.mission].helio){startRoute();tutEvent('route')}else doLaunch()};
+function goBrief(){legend=null;setPhase('brief');$('brief').hidden=false;$('report').hidden=true;active=earth;resetLaunchScene();shot({tx:-20,ty:12,tz:-40,d:120,pitch:.12});say('Choose a mission to begin')}
+
+/* =====================================================================
+   10. ROUTE PLANNER (the core): flybys, dates, launch-window map, auto-tune
+   ===================================================================== */
+const FLY_OPTS=['venus','earth','mars','jupiter','saturn','uranus'];
+function startLegend(id){legend=LEGENDS[id];const L=legend;const jds=L.dates.map(d=>jdOf(...d));
+  histRR=evalRoute(L.seq,jds[0],jds.slice(1).map((x,i)=>x-jds[i]),false);
+  cfg={mission:'legend',launcher:L.launcher,bus:'M',power:'rtg2',comm:'hga3',passes:1,inst:['cam','spec','mag'],vault:false,margin:10,
+    route:{seq:L.seq.slice(),jd0:jds[0],tofs:jds.slice(1).map((x,i)=>x-jds[i])},rr:null};evalCfgRoute();
+  $('brief').hidden=true;rebuildModels();startRoute();say(`${L.name}: this is the historical route. Can you find a cheaper one?`)}
+function startRoute(){setPhase('route');active=space;renderRoutePanel();refreshRoute(true);
+  const R=SYS.rMax;shot({tx:0,ty:0,tz:0,d:R*2.2,yaw:.35,pitch:1.05});Object.assign(rig,des);rig.d=R*3;if(!legend)say('Plan your route: add flybys and tune the dates')}
+function legDefault(a,b){return Math.round(hohT(a,b))}
+function renderRoutePanel(){const r=cfg.route,b=jdBounds(),tgt=r.seq[r.seq.length-1];
+  const chips=r.seq.map((id,i)=>{const isT=i===r.seq.length-1,isS=i===0;return`<span class="seq ${isT?'tgt':''}"><i class="dot" style="background:${PH[id].col}"></i>${PH[id].name}${!isT&&!isS?`<button data-rm="${i}" title="Remove flyby">✕</button>`:''}${isT?' ◎':''}</span>`}).join('<span class="text-muted font-bold">→</span>');
+  const prev=r.seq[r.seq.length-2];
+  const adds=FLY_OPTS.map(id=>`<button class="chipbtn" data-add="${id}" ${(id===prev||id===tgt||r.seq.length>=6)?'disabled':''}>+ ${PH[id].name}</button>`).join('');
+  const legs=r.tofs.map((t,i)=>{const[lo,hi]=tofRange(r.seq[i],r.seq[i+1]);return`<div><div class="flex justify-between text-[12px]"><label class="font-bold" for="r-leg${i}">${PH[r.seq[i]].name} → ${PH[r.seq[i+1]].name}</label><output id="o-leg${i}" class="font-extrabold text-accent tabular-nums">${fmtDur(t)}</output></div><input id="r-leg${i}" data-leg="${i}" type="range" min="${lo}" max="${hi}" step="1" value="${clamp(t,lo,hi)}"></div>`}).join('');
+  $('rpanel').innerHTML=`
+   <div class="flex items-center justify-between"><h3 class="font-extrabold text-sm">${legend?legend.name+' · route':'Route planner'}</h3><span class="text-[11px] font-bold text-muted">to ${PH[tgt].name}</span></div>
+   <div class="grp"><h4>Flight path</h4><div class="flex flex-wrap items-center gap-1">${chips}</div>
+     <div id="addFly" class="flex flex-wrap gap-1 mt-2 items-center"><span class="text-[11px] font-bold text-muted mr-1">Add flyby:</span>${adds}</div></div>
+   <div class="grp"><h4>Launch date</h4><div class="flex justify-between"><span class="text-[12px] font-bold">Lift-off</span><output id="o-jd" class="font-extrabold text-accent">${fmtDate(r.jd0)}</output></div>
+     <input id="r-jd" type="range" min="${Math.round(b.lo)}" max="${Math.round(b.hi)}" step="1" value="${Math.round(r.jd0)}"></div>
+   <div class="grp"><h4>Leg durations</h4><div class="flex flex-col gap-1.5">${legs}</div></div>
+   <div class="flex gap-2"><button id="btnTune" class="btn dark flex-1">✦ Auto-tune dates</button><button id="btnDirect" class="btn text-xs">Reset</button></div>
+   <p id="tuneMsg" class="text-[11px] text-muted -mt-1 leading-snug">Auto-tune searches thousands of date combinations for the cheapest safe route with this flyby order.</p>
+   <div class="grp"><h4>Launch window map · first leg</h4><canvas id="pork" width="600" height="300" class="w-full rounded-md cursor-crosshair border border-line"></canvas>
+     <p class="text-[11px] text-muted leading-snug mt-1">Horizontal: launch date (±1 year). Vertical: flight time to ${PH[r.seq[1]].name}. Teal = the cheapest launch energy in this window, red = far more expensive. Click to pick.</p></div>
+   <div class="grp" id="flybyList"></div>`;
+  $('rpanel').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const i=+b.dataset.rm;const s=r.seq;s.splice(i,1);for(let k=s.length-1;k>0;k--)if(s[k]===s[k-1])s.splice(k===s.length-1?k-1:k,1);r.tofs=s.slice(0,-1).map((a,k)=>legDefault(a,s[k+1]));say('Flyby removed. Re-tune the dates.');routeChanged(true)});
+  $('rpanel').querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const id=b.dataset.add,s=r.seq,n=s.length;s.splice(n-1,0,id);r.tofs.splice(n-2,1,legDefault(s[n-2],id),legDefault(id,s[n]));say(`${PH[id].name} flyby added. Now tune the dates so the planets line up.`);routeChanged(true);tutEvent('flyby')});
+  $('r-jd').oninput=e=>{r.jd0=+e.target.value;$('o-jd').textContent=fmtDate(r.jd0);routeChanged(false)};
+  $('rpanel').querySelectorAll('[data-leg]').forEach(inp=>inp.oninput=e=>{const i=+e.target.dataset.leg;r.tofs[i]=+e.target.value;$('o-leg'+i).textContent=fmtDur(r.tofs[i]);routeChanged(false,i===0?false:false)});
+  $('btnTune').onclick=autoTune;
+  $('btnDirect').onclick=()=>{if(legend){const jds=legend.dates.map(d=>jdOf(...d));Object.assign(r,{seq:legend.seq.slice(),jd0:jds[0],tofs:jds.slice(1).map((x,i)=>x-jds[i])});say('Historical route restored');routeChanged(true)}else{initDirectRoute(tgt);say('Back to a direct flight');renderRoutePanel();refreshRoute(true)}};
+  const pc=$('pork');pc.onclick=e=>{const b2=pc.getBoundingClientRect(),u=(e.clientX-b2.left)/b2.width,v=(e.clientY-b2.top)/b2.height;if(!pork)return;r.jd0=Math.round(lerp(pork.j0,pork.j1,u));r.tofs[0]=Math.round(lerp(pork.t1,pork.t0,v));
+    $('r-jd').value=r.jd0;$('o-jd').textContent=fmtDate(r.jd0);$('r-leg0').value=r.tofs[0];$('o-leg0').textContent=fmtDur(r.tofs[0]);routeChanged(false)};
+  pork=null}
+let routeRAF=0;
+function routeChanged(structural){if(structural){renderRoutePanel();refreshRoute(true);return}if(routeRAF)return;routeRAF=requestAnimationFrame(()=>{routeRAF=0;refreshRoute(false)})}
+function refreshRoute(rebuildScene){evalCfgRoute();const rr=cfg.rr;
+  if(rebuildScene)setupHelio(rr,rr.ok?rr.jds[0]:cfg.route.jd0);else{drawRoute(rr);placeHelio(rr.ok?rr.jds[0]:cfg.route.jd0)}
+  if(!legend){res=compute(cfg);updateKPIs()}
+  drawPork();renderFlybys();renderSummary()}
+let pork=null;
+function drawPork(){const c=$('pork');if(!c)return;const g=c.getContext('2d'),W=c.width,H=c.height,r=cfg.route,a=r.seq[0],b=r.seq[1],[t0,t1]=tofRange(a,b),bd=jdBounds();
+  const center=pork&&pork.a===a&&pork.b===b&&Math.abs(r.jd0-pork.c)<250?pork.c:r.jd0;
+  if(!pork||pork.a!==a||pork.b!==b||pork.c!==center){const j0=Math.max(bd.lo,center-365),j1=Math.min(bd.hi,center+365),NX=75,NY=38,img=g.createImageData(NX,NY);
+    const vals=new Float32Array(NX*NY).fill(NaN);let mn=1e9;
+    for(let ix=0;ix<NX;ix++)for(let iy=0;iy<NY;iy++){const jd=lerp(j0,j1,ix/(NX-1)),tf=lerp(t1,t0,iy/(NY-1));const L=lambert(ephemPos(a,jd),ephemPos(b,jd+tf),tf*DAY,MU_SUN);
+      if(L){const c3=(nrm(sub(L.v1,ephemVel(a,jd)))/1000)**2;vals[iy*NX+ix]=c3;if(c3<mn)mn=c3}}
+    const pal=[[0,[31,111,106]],[.12,[95,179,138]],[.3,[226,178,60]],[.6,[226,119,46]],[1,[185,58,44]]],span=Math.max(25,mn*.9);
+    for(let q=0;q<NX*NY;q++){let col=[60,62,80];const c3=vals[q];if(c3===c3){const u=clamp((c3-mn)/span,0,1);let k=0;while(k<pal.length-2&&u>pal[k+1][0])k++;const f=clamp((u-pal[k][0])/(pal[k+1][0]-pal[k][0]),0,1);col=pal[k][1].map((v,z)=>v+(pal[k+1][1][z]-v)*f)}
+      const o=q*4;img.data[o]=col[0];img.data[o+1]=col[1];img.data[o+2]=col[2];img.data[o+3]=255}
+    const off=document.createElement('canvas');off.width=NX;off.height=NY;off.getContext('2d').putImageData(img,0,0);pork={a,b,c:center,j0,j1,t0,t1,off,mn,span}}
+  g.imageSmoothingEnabled=true;g.drawImage(pork.off,0,0,W,H);
+  const x=(r.jd0-pork.j0)/(pork.j1-pork.j0)*W,y=(1-(r.tofs[0]-pork.t0)/(pork.t1-pork.t0))*H;
+  g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(x,y,9,0,TAU);g.stroke();g.beginPath();g.moveTo(x-16,y);g.lineTo(x-11,y);g.moveTo(x+11,y);g.lineTo(x+16,y);g.moveTo(x,y-16);g.lineTo(x,y-11);g.moveTo(x,y+11);g.lineTo(x,y+16);g.stroke();
+  g.font='700 20px "Plus Jakarta Sans",sans-serif';g.fillStyle='rgba(255,255,255,.92)';g.fillText(jdDate(pork.j0).getUTCFullYear(),8,H-10);g.fillText(`best C3 here ${fmt(pork.mn,0)} · red ≥ ${fmt(pork.mn+pork.span,0)} km²/s²`,8,24);const ye=String(jdDate(pork.j1).getUTCFullYear());g.fillText(ye,W-g.measureText(ye).width-8,H-10)}
+function renderFlybys(){const rr=cfg.rr,el=$('flybyList');if(!el)return;
+  if(!rr.ok){el.innerHTML=`<h4>Flybys</h4><div class="fb bad"><b>No trajectory connects ${PH[rr.seq[rr.bad]].name} to ${PH[rr.seq[rr.bad+1]].name} in ${fmt(rr.tofs[rr.bad])} days.</b> Change the dates or press Auto-tune.</div>`;return}
+  const cards=rr.flybys.map(f=>{const p=PH[f.id],alt=(f.rp-p.R)/1e3;return`<div class="fb ${f.tooClose?'bad':'good'}">
+    <div class="flex justify-between"><b>${f.tooClose?'⚠ ':''}${p.name} flyby</b><span class="text-muted font-bold">${fmtDate(f.jd)}</span></div>
+    <div>${f.tooClose?`Would need to pass ${closeTxt(f)}. <b>Crash.</b> Shift the dates.`:`Passes <b>${fmt(f.rpR,1)} radii</b> from the centre (${fmt(alt)} km up), path bends <b>${fmt(f.delta*180/Math.PI)}°</b>.`}</div>
+    <div>${f.gain>=0?`<b class="text-ok">+${fmt(f.gain/1000,2)} km/s</b> free speed (passed behind ${p.name})`:`<b class="text-warn">${fmt(f.gain/1000,2)} km/s</b> (braked: passed in front)`}${f.powered>60?` · engine burn ${fmt(f.powered/1000,2)} km/s`:' · no engine burn'}</div></div>`}).join('');
+  const tgt=rr.seq[rr.seq.length-1];
+  el.innerHTML=`<h4>Flybys & arrival</h4><div class="flex flex-col gap-1.5">${cards||'<p class="text-[11.5px] text-muted">No flybys: flying direct. Add a planet above to borrow its speed.</p>'}
+    <div class="fb"><div class="flex justify-between"><b>Arrive at ${PH[tgt].name}</b><span class="text-muted font-bold">${fmtDate(rr.jds[rr.jds.length-1])}</span></div>
+    <div>Approach speed ${fmt(rr.vinfA/1000,2)} km/s${rr.capture?` · capture burn <b>${fmt(rr.dvCap/1000,2)} km/s</b>`:' · flyby, no capture'}</div></div></div>`}
+function fuelStats(rr){const dry=legend?600:compute(cfg).dry,ref=legend?histRR:(cfg.base||hohmann(rr.seq[rr.seq.length-1],true));
+  const pr=propFor(dry,rr.dvEq),pd=propFor(dry,ref.dvEq);return{dry,pr,pd,saved:pd-pr,pct:(pd-pr)/pd,ref}}
+function renderSummary(){const rr=cfg.rr,el=$('rsum');
+  if(!rr.ok){el.innerHTML=`<h3 class="font-extrabold text-sm">Route summary</h3><div class="chk bad"><i>✕</i><span>This combination of dates has no trajectory. Move the sliders or press Auto-tune.</span></div>${navButtons(false)}`;wireNav();return}
+  const fs=fuelStats(rr),saved=fs.saved,same=Math.abs(saved)<5,good=saved>0||same;let h=`<div class="flex items-center justify-between"><h3 class="font-extrabold text-sm">${legend?'You vs '+legend.year+' planners':'Route summary'}</h3><span class="text-[11px] font-bold text-muted">${fmtDur(rr.tof)}</span></div>`;
+  h+=`<div id="fuelBox" class="rounded-lg p-3 ${good?'bg-[#e3f1e8] border border-[#9fd0b5]':'bg-[#fdf0d2] border border-[#ecd49a]'}">
+    <p class="text-[10.5px] font-extrabold uppercase tracking-[.08em] ${good?'text-ok':'text-warn'}">${legend?'Propellant vs the historical route':'Propellant vs flying direct'}</p>
+    <p class="text-2xl font-extrabold tracking-tight tabular-nums ${good?'text-ok':'text-warn'}">${same?'±0':(saved>0?'−':'+')+fmt(Math.abs(saved)/1000,2)} t</p>
+    <p class="text-[11.5px] leading-snug">${same?'The same propellant':saved>0?`${fmt(fs.pct*100)}% less propellant`:`${fmt(-fs.pct*100)}% more propellant`} than ${legend?'the real '+legend.name+' route':'the best direct flight'}, for a ${fmt(fs.dry)} kg spacecraft (all burns from low Earth orbit, Isp ${ISP} s).</p>
+    <div class="mt-2 grid gap-1 text-[11px] font-bold"><div class="flex items-center gap-2"><span class="w-16">${legend?'Yours':'Route'}</span><div class="bar flex-1"><i style="width:${clamp(fs.pr/Math.max(fs.pr,fs.pd)*100,2,100)}%;background:#e2772e"></i></div></div>
+    <div class="flex items-center gap-2"><span class="w-16">${legend?'1970s':'Direct'}</span><div class="bar flex-1"><i style="width:${clamp(fs.pd/Math.max(fs.pr,fs.pd)*100,2,100)}%;background:#7b7166"></i></div></div></div></div>`;
+  const row=(k,v,cl='')=>`<span class="text-muted font-semibold">${k}</span><span class="font-mono font-bold text-right ${cl}">${v}</span>`;
+  h+=`<div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11.5px]">${row('Launch energy C3',fmt(rr.c3,1)+' km²/s²')}${row('Free speed (flybys)','+'+fmt(rr.free/1000,2)+' km/s','text-ok')}${row('Engine Δv in space',fmt(rr.dvSc/1000,2)+' km/s')}${row('Total Δv from orbit',fmt(rr.dvEq/1000,2)+' km/s')}${row('Launch',fmtDate(rr.jds[0]))}${row('Arrival',fmtDate(rr.jds[rr.jds.length-1]))}</div>`;
+  const C=[];const ck=(st,t)=>C.push(`<div class="chk ${st}"><i>${st==='ok'?'✓':st==='bad'?'✕':'!'}</i><span>${t}</span></div>`);
+  if(rr.crash)ck('bad',`${rr.crash} flyby${rr.crash>1?'s':''} would hit the planet. Launching anyway ends in a crash.`);else if(rr.flybys.length)ck('ok','All flybys pass safely');
+  if(!legend){const r=compute(cfg);res=r;ck(r.launchOK?'ok':'bad',r.launchOK?`${r.L.name} can lift ${fmt(r.wet)} kg to C3 ${fmt(rr.c3,0)}`:`${r.L.name} lifts only ${fmt(r.cap)} kg to C3 ${fmt(rr.c3,0)}; spacecraft is ${fmt(r.wet)} kg`);
+    ck(r.cost<=r.budget?'ok':'bad',r.cost<=r.budget?`$${fmt(r.cost)}M of $${fmt(r.budget)}M (long cruises cost operations money)`:`Over budget by $${fmt(r.cost-r.budget)}M`);
+    ck(r.sci>=r.M.goal?'ok':'warn',`Predicted science ${fmt(r.sci)} / ${r.M.goal}`)}
+  else{ck(rr.dvEq<=histRR.dvEq*1.0?'ok':'warn',`Total Δv ${fmt(rr.dvEq/1000,2)} km/s vs historical ${fmt(histRR.dvEq/1000,2)} km/s`);ck(rr.tof<=histRR.tof*1.05?'ok':'warn',`Duration ${fmtDur(rr.tof)} vs historical ${fmtDur(histRR.tof)}`)}
+  h+=`<div class="flex flex-col gap-1.5 pt-2 border-t border-line">${C.join('')}</div>`+navButtons(true);el.innerHTML=h;wireNav();if(tutOn)tutShow()}
+function navButtons(ok){return`<button id="btnLaunch2" class="btn primary w-full text-[15px] mt-1" ${ok?'':'disabled'}>Launch mission ▲</button><button id="btnBack2" class="btn w-full text-xs">${legend?'← Back to missions':'← Back to spacecraft design'}</button>`}
+function wireNav(){$('btnLaunch2').onclick=()=>{tutEvent('launch');doLaunch()};$('btnBack2').onclick=()=>{if(legend)goBrief();else{startDesign()}}}
+async function autoTune(){const r=cfg.route,b=jdBounds(),seq=r.seq.slice(),cap=!legend,opt={jdMin:b.lo,jdMax:b.hi};$('btnTune').disabled=true;
+  const cur=[r.jd0,...r.tofs];let best={jd0:r.jd0,tofs:r.tofs.slice(),J:routeScore(evalRoute(seq,r.jd0,r.tofs,cap),120)};const t0=performance.now(),seed=(Math.random()*1e9)|0,RUNS=3;
+  for(let k=0;k<RUNS;k++){$('tuneMsg').textContent=`Evolving launch dates and flight times… pass ${k+1} of ${RUNS}`;await new Promise(res=>setTimeout(res,30));
+    const t=tuneDE(seq,cap,Object.assign({},opt,{seed:seed+k*104729,start:k===0?cur:null}));if(t.J<best.J)best=t}
+  r.jd0=best.jd0;r.tofs=best.tofs;evalCfgRoute();const rr=cfg.rr;
+  const msg=rr.ok?`Best of ~${fmt(RUNS*4200*(seq.length)/3,0)} trajectories in ${fmt((performance.now()-t0)/1000,1)} s: launch ${fmtDate(rr.jds[0])}, total Δv ${fmt(rr.dvEq/1000,2)} km/s${rr.crash?' (still unsafe: try another flyby order)':''}.`:'No safe route with this flyby order. Try a different planet.';
+  say(rr.ok&&!rr.crash?`Planets aligned: launch on ${fmtDate(rr.jds[0])}`:'This flyby order does not work well. Try another planet.');
+  renderRoutePanel();$('tuneMsg').textContent=msg;refreshRoute(true);SFX.chime();tutEvent('tune')}
+
+/* =====================================================================
+   11. LAUNCH (success or a dramatic failure)
+   ===================================================================== */
+let lt=0;
+function resetLaunchScene(){fireball.visible=false;if(rocket){rocket.visible=true;rocket.userData.fail=null;rocket.userData.sep=0;rocket.position.set(PAD.x,3,PAD.z);rocket.rotation.set(0,0,0);rocket.userData.plume.visible=false;
+    rocket.userData.boosters.forEach((b,i)=>{b.position.set((b.position.x<0?-1:1)*b.userData.x0,0,0);b.rotation.set(0,0,0);b.userData.vx=0;if(b.userData.plume)b.userData.plume.visible=false})}
+  flame.visible=false;smoke.visible=false;pLife.fill(0);sm.forEach(s=>s.age=99);if(craftStand)craftStand.visible=true}
+function doLaunch(){if(legend){const rr=cfg.rr;const opts=['med','heavy','super'];const dry=600;cfg.launcher=opts.find(id=>capacity(LAUNCHERS[id],rr.c3)>=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)))||'super';rebuildModels()}
+  launchRes=legend?legendResult():compute(cfg);mods={};active=earth;resetLaunchScene();setPhase('launch');lt=0;craftStand.visible=false;flame.visible=smoke.visible=true;autoSpin=false;
+  shot({tx:PAD.x,ty:30,tz:PAD.z,d:140,yaw:.4,pitch:.07});Object.assign(rig,des);rig.d=200;say(`Payload encapsulated on the ${LAUNCHERS[cfg.launcher].name.toLowerCase()}. Countdown.`)}
+function legendResult(){const rr=cfg.rr,L=LAUNCHERS[cfg.launcher],dry=600,wet=dry*Math.exp(rr.dvSc*1.1/(ISP*G0)),cap=capacity(L,rr.c3);return{legend:true,rr,L,dry,wet,cap,launchOK:rr.ok&&wet<=cap,crashed:!!rr.crash,alive:true}}
+function banner(t,ms=1800){const b=$('banner');b.innerHTML=t;b.style.opacity=1;clearTimeout(banner.h);banner.h=setTimeout(()=>b.style.opacity=0,ms)}
+let launchOut=false,lastBeep=null;
+function updateLaunch(dt){lt+=dt;const ign=3;
+  if(lt<ign){const n=Math.ceil(ign-lt);if(lastBeep!==n){lastBeep=n;banner(`T−${n}`,700);SFX.beep(false)}if(lt>ign-1.2){rocket.userData.plume.visible=true;rocket.userData.plume.scale.setScalar(.5+Math.random()*.15);rocket.userData.boosters.forEach(b=>b.userData.plume.visible=true);emit(6,rocket.position.x,rocket.position.y,rocket.position.z,1.5,30);if(Math.random()<.5)puff(PAD.x,PAD.z);SFX.rumble(true)}}
+  else{if(!launchRes.launchOK&&lt-ign>=5){updateFail(dt);stepParticles(dt);stepFireball(dt);return}
+    if(lastBeep!==0){lastBeep=0;banner('Liftoff!',1400);SFX.beep(true);say('Liftoff! Climbing out of Earth\'s gravity well')}
+    const t=lt-ign,acc=2.2+t*.8,y=3+.5*acc*t*t*.6;rocket.userData.prevY=rocket.position.y;rocket.position.y=y;
+    const pitch=sstep(4.5,12,t)*.32;rocket.rotation.z=-pitch;rocket.position.x=PAD.x+Math.pow(Math.max(0,t-4.5),2)*.9;rocket.userData.plume.scale.setScalar(1+Math.random()*.18+Math.min(.6,t*.08));
+    const base=rocket.position;emit(14,base.x,base.y-.5,base.z,rocket.userData.w*1.2,60+t*8);if(y<40&&Math.random()<.9){puff(PAD.x,PAD.z);puff(PAD.x,PAD.z)}
+    shake=Math.max(0,.9-t*.12);SFX.rumbleLevel(clamp(t/10,0,1));
+    if(t>5&&rocket.userData.boosters.length&&!rocket.userData.sep){rocket.userData.sep=1;say('Booster separation')}
+    if(rocket.userData.sep)rocket.userData.boosters.forEach((b,i)=>{if(b.userData.plume)b.userData.plume.visible=false;b.userData.vx=(b.userData.vx||0)+dt*3;b.position.x+=(i?1:-1)*b.userData.vx*dt*3;b.position.y-=b.userData.vx*dt*6;b.rotation.z+=(i?-1:1)*dt*.4});
+    shot({tx:rocket.position.x,ty:Math.max(26,y+20),tz:rocket.position.z,d:150+t*14,pitch:.08+sstep(2,10,t)*.15});
+    if(t>11&&!launchOut){launchOut=true;$('fade').style.opacity=1;SFX.rumble(false);setTimeout(endLaunch,800)}}
+  stepParticles(dt);stepFireball(dt)}
+function updateFail(dt){const u=rocket.userData;let F=u.fail;
+  if(!F){F=u.fail={vx:7,vy:clamp((rocket.position.y-(u.prevY??rocket.position.y))/Math.max(dt,1e-3),5,40),boom:-1,spin:0};u.plume.visible=false;u.boosters.forEach(b=>{if(b.userData.plume)b.userData.plume.visible=false});SFX.rumble(false);
+    banner('Engine cutoff<br><span class="text-xl">not enough performance for this payload</span>',2400);say(`The rocket burned all its propellant: ${fmt(launchRes.wet)} kg is more than it can carry to C3 ${fmt(launchRes.legend?launchRes.rr.c3:launchRes.R.c3,0)}`)}
+  if(F.boom<0){F.vy-=14*dt;rocket.position.x+=F.vx*dt;rocket.position.y+=F.vy*dt;F.spin+=dt*(F.vy<0?1.4:.4);rocket.rotation.z=-(Math.atan2(F.vx,F.vy)*.85+Math.sin(F.spin*3)*.06);
+    if(Math.random()<.5){const i=pHead=(pHead+1)%NP;pPos[i*3]=rocket.position.x;pPos[i*3+1]=rocket.position.y;pPos[i*3+2]=rocket.position.z;pVel[i*3]=0;pVel[i*3+1]=2;pVel[i*3+2]=0;pLife[i]=.8}
+    shot({tx:rocket.position.x,ty:Math.max(22,rocket.position.y*.8),tz:rocket.position.z,d:150,pitch:.07});
+    if(rocket.position.y<=4){F.boom=0;rocket.visible=false;burst(rocket.position);shake=3.4;banner('Mission lost',2200);SFX.boom();say('The vehicle fell back and impacted downrange. Redesign and try again.')}}
+  else{F.boom+=dt;shake=Math.max(0,3.4-F.boom*1.5);if(F.boom>3.4&&!launchOut){launchOut=true;$('fade').style.opacity=1;setTimeout(endLaunch,800)}}}
+function endLaunch(){launchOut=false;shake=0;lastBeep=null;
+  if(!launchRes.launchOK){showReport('launch');$('fade').style.opacity=0;return}
+  flags={};lag=0;active=space;
+  if(launchRes.legend||launchRes.M.helio){setupHelio(cfg.rr,cfg.rr.jds[0]);startHelioCruise()}else{setupMoon();startMoonCruise()}
+  setPhase('cruise');evtQueue=pickEvents();paused=false;cruiseSpeed=1;buildSpeeds();setView(view);$('fade').style.opacity=0}
+
+/* =====================================================================
+   12. CRUISE: replay the real trajectory, flyby cinematics, events
+   ===================================================================== */
+let cr=null,cruiseSpeed=1,paused=false,evtQueue=[],opsT=0,flags={},view='einstein',lag=0;
+const tmpV=new THREE.Vector3();
+function startHelioCruise(){const rr=cfg.rr;cr={mode:'helio',jd0:rr.jds[0],jd:rr.jds[0],jdEnd:rr.jds[rr.jds.length-1],sec:clamp(10+rr.legs.length*5+rr.tof/365.25*1.6,16,46),p:0};
+  cr.fbs=rr.flybys.map(f=>Object.assign({},f,{win:Math.max(3,Math.min(40,rr.tof*.012)),done:false}));
+  const R=SYS.rMax;shot({tx:0,ty:0,tz:0,d:R*1.5,yaw:.5,pitch:.68});Object.assign(rig,des);rig.d=R*2.6;rig.pitch=1.1;say(`${PH[rr.seq[rr.seq.length-1]].name} bound. Next stop: ${PH[rr.seq[1]].name}`)}
+function startMoonCruise(){cr={mode:'moon',t:0,tof:SYS.tof,sec:12,p:0,fbs:[]};shot({tx:0,ty:0,tz:0,d:95,yaw:.5,pitch:.62});Object.assign(rig,des);rig.d=150;rig.pitch=1.1;say('Moon bound: trans-lunar coast')}
+function buildSpeeds(){$('hudSpeeds').innerHTML=[[1,'1×'],[3,'3×'],[8,'8×']].map(([s,l])=>`<button class="btn text-xs py-1 px-2.5 ${cruiseSpeed===s?'dark':''}" data-s="${s}">${l}</button>`).join('')+'<span class="text-[11px] text-muted self-center ml-1">time warp</span>';
+  $('hudSpeeds').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{cruiseSpeed=+b.dataset.s;buildSpeeds()})}
+function setView(v){view=v;$('vNewton').classList.toggle('dark',v==='newton');$('vEinstein').classList.toggle('dark',v==='einstein');
+  $('viewNote').textContent=v==='newton'?'Newton: the Sun and planets pull on the spacecraft (arrows). Simple, and accurate enough to fly by.':'Einstein: there is no pull. Mass curves spacetime and the spacecraft coasts along the straightest possible path (a geodesic). Clocks deep in the well tick slower.'}
+$('vNewton').onclick=()=>setView('newton');$('vEinstein').onclick=()=>setView('einstein');
+function hudRows(rows){$('hudRows').innerHTML=rows.map(([k,v,c])=>`<span class="text-muted font-semibold">${k}</span><span class="font-mono font-bold text-right ${c||''}">${v}</span>`).join('')}
+function updateViewFX(dt,craftPos,rM,vM,sr){gridMat.uniforms.amp.value+=((view==='einstein'?1:.12)-gridMat.uniforms.amp.value)*Math.min(1,dt*3);
+  if(SYS.mode!=='helio'||!SYS.arrS)return;const show=view==='newton';SYS.arrS.visible=SYS.arrP.visible=show;if(!show)return;
+  const len=a=>clamp(4+1.6*(Math.log10(a)+4),1.5,16);
+  const aS=MU_SUN/(rM*rM);SYS.arrS.position.copy(craftPos);SYS.arrS.setDirection(tmpV.copy(craftPos).multiplyScalar(-1).normalize());SYS.arrS.setLength(len(aS),1.6,1.1);
+  let best=null,ba=0;const s=sr||helioState(cr.jd).r;for(const id in SYS.bodies){const p=ephemPos(id,cr.jd),d=Math.hypot(p[0]-s[0],p[1]-s[1]),a=PH[id].mu/(d*d);if(a>ba){ba=a;best=id}}
+  if(best){const bp=SYS.bodies[best].m.position;SYS.arrP.position.copy(craftPos);SYS.arrP.setDirection(tmpV.copy(bp).sub(craftPos).normalize());SYS.arrP.setLength(len(ba),1.6,1.1)}}
+function updateCruise(dt){if(cr.mode==='moon')return updateMoonCruise(dt);
+  if(paused){placeHelio(cr.jd);return}
+  const total=cr.jdEnd-cr.jd0;let slow=1,near=null;
+  for(const f of cr.fbs){const d=Math.abs(cr.jd-f.jd);if(d<f.win){const s=.06+.94*sstep(0,1,d/f.win);if(s<slow){slow=s;near=f}}}
+  const prevJ=cr.jd,p0=cr.p;cr.jd=Math.min(cr.jdEnd,cr.jd+dt*cruiseSpeed*total/cr.sec*slow);cr.p=(cr.jd-cr.jd0)/total;
+  for(const e of evtQueue)if(!e.done&&p0<e.at&&cr.p>=e.at){if(near){e.at+=.04;continue}e.done=1;openEvent(e);break}
+  for(const f of cr.fbs)if(!f.done&&prevJ<f.jd&&cr.jd>=f.jd){f.done=true;cr.jd=f.jd;if(f.tooClose){return crashFlyby(f)}
+    banner(`${PH[f.id].name} flyby<br><span class="text-xl">${f.gain>=0?'+':''}${fmt(f.gain/1000,2)} km/s from gravity, ${f.powered>60?fmt(f.powered/1000,2)+' km/s burn':'no fuel burned'}</span>`,2600);SFX.whoosh();
+    say(`${PH[f.id].name} bent the path by ${fmt(f.delta*180/Math.PI)}° at ${fmt(f.rpR,1)} planet radii`);SYS.pulse.position.copy(SYS.bodies[f.id].m.position);SYS.pulse.userData.t=0}
+  const s=helioState(cr.jd),pos=toVis(s.r,.3);SYS.craft.position.copy(pos);
+  const ah=propagate(s.r,s.v,DAY*2,MU_SUN),pa=toVis(ah.r,.3);if(pa.distanceToSquared(pos)>1e-8)SYS.craft.lookAt(pa);
+  if(SYS.done){const idx=s.li*SYS.N+Math.round(s.f*SYS.N)+1;SYS.done.geometry.setDrawRange(0,idx)}
+  placeHelio(cr.jd);
+  if(SYS.pulse.userData.t!=null){const t=SYS.pulse.userData.t+=dt;SYS.pulse.material.opacity=Math.max(0,1-t/1.6);SYS.pulse.scale.setScalar(4+t*26);if(t>1.6)SYS.pulse.userData.t=null}
+  const k=1-Math.exp(-dt*2.2);
+  if(near){const bp=SYS.bodies[near.id].m.position;des.tx+=(bp.x-des.tx)*k;des.tz+=(bp.z-des.tz)*k;des.d+=(PH[near.id].vR*11-des.d)*k}
+  else{des.tx+=(pos.x*.6-des.tx)*k;des.tz+=(pos.z*.6-des.tz)*k;des.d+=(SYS.rMax*1.5-des.d)*k*.5}
+  const rM=Math.hypot(s.r[0],s.r[1]),vM=Math.hypot(s.v[0],s.v[1]),eP=ephemPos('earth',cr.jd),dE=Math.hypot(s.r[0]-eP[0],s.r[1]-eP[1]);
+  const dtSec=(cr.jd-prevJ)*DAY;lag+=dtSec*((MU_SUN/(rM*CL*CL)+vM*vM/(2*CL*CL))-(MU_SUN/(AU*CL*CL)+29780*29780/(2*CL*CL)));
+  updateViewFX(dt,pos,rM,vM,s.r);
+  const nf=cr.fbs.find(f=>!f.done),nxt=nf?`${PH[nf.id].name} in ${fmtDur(nf.jd-cr.jd)}`:`${PH[cfg.rr.seq[cfg.rr.seq.length-1]].name} in ${fmtDur(cr.jdEnd-cr.jd)}`;
+  $('hudPhase').textContent=near?`${PH[near.id].name} flyby`:`Leg ${s.li+1}: ${PH[cfg.rr.seq[s.li]].name} → ${PH[cfg.rr.seq[s.li+1]].name}`;$('hudDay').textContent=fmtDate(cr.jd);$('hudBar').style.width=(cr.p*100)+'%';
+  const rows=[['From Sun',fmt(rM/AU,2)+' AU'],['Speed (Sun frame)',fmt(vM/1000,2)+' km/s'],['Signal delay',dE/CL<60?fmt(dE/CL,1)+' s':dE/CL<7200?fmt(dE/CL/60,1)+' min':fmt(dE/CL/3600,2)+' h'],['Next',nxt]];
+  if(view==='einstein')rows.push(['Clock vs Earth',`${lag>=0?'−':'+'}${fmt(Math.abs(lag)*1000,2)} ms`,lag>=0?'text-bad':'text-ok']);
+  hudRows(rows);
+  if(cr.jd>=cr.jdEnd)arrive()}
+function updateMoonCruise(dt){if(paused){placeMoon(cr.t);return}const p0=cr.p;cr.p=Math.min(1,cr.p+dt*cruiseSpeed/cr.sec);cr.t=cr.p*cr.tof;
+  for(const e of evtQueue)if(!e.done&&p0<e.at&&cr.p>=e.at){e.done=1;openEvent(e);break}
+  const s=moonCraft(cr.t);SYS.craft.position.copy(s.pos);const a=moonCraft(Math.min(cr.tof,cr.t+cr.tof*.003)).pos;if(a.distanceToSquared(s.pos)>1e-8)SYS.craft.lookAt(a);
+  SYS.done.geometry.setDrawRange(0,Math.max(2,Math.round(cr.p*SYS.N)+1));placeMoon(cr.t);updateViewFX(dt,s.pos,s.r,s.v);
+  const k=1-Math.exp(-dt*2);des.tx+=(s.pos.x*.55-des.tx)*k;des.tz+=(s.pos.z*.55-des.tz)*k;
+  $('hudPhase').textContent='Trans-lunar coast';$('hudDay').textContent=`Day ${fmt(cr.t,1)} / ${fmt(cr.tof,1)}`;$('hudBar').style.width=(cr.p*100)+'%';
+  hudRows([['From Earth',fmt(s.r/1e3)+' km'],['Speed',fmt(s.v/1000,2)+' km/s'],['Signal delay',fmt(s.r/CL,2)+' s'],['Propellant',fmt(launchRes.prop)+' kg']]);if(cr.p>=1)arrive()}
+function crashFlyby(f){paused=true;const p=SYS.bodies[f.id].m.position;SYS.craft.visible=false;SYS.pulse.position.copy(p);SYS.pulse.material.color.set(0xff5a3a);SYS.pulse.userData.t=0;
+  const b=sprite(0xff8a3a,PH[f.id].vR*3,1);b.position.copy(SYS.craft.position);dyn.add(b);SFX.boom();shake=1.2;
+  banner(`Impact on ${PH[f.id].name}`,2600);say(`The trajectory needed to pass ${closeTxt(f)}.`);
+  shot({tx:p.x,ty:0,tz:p.z,d:PH[f.id].vR*9});cr.crashed=f;setTimeout(()=>{shake=0;showReport('crash')},2800)}
+function arrive(){const lr=launchRes;flags.arr=1;SYS.pulse&&(SYS.pulse.userData.t=0);
+  if(lr.legend){const tgt=cfg.rr.seq[cfg.rr.seq.length-1],p=SYS.bodies[tgt].m.position;shot({tx:p.x,ty:0,tz:p.z,d:PH[tgt].vR*9,pitch:.35});banner(`${PH[tgt].name} encounter!`,2400);SFX.chime();setPhase('ops');opsT=0;return}
+  res=compute(cfg,mods);setPhase('ops');opsT=0;const T=cr.mode==='moon'?SYS.moon.m:SYS.bodies[cfg.rr.seq[cfg.rr.seq.length-1]].m,vR=cr.mode==='moon'?2.2:PH[lr.M.target].vR;
+  shot({tx:T.position.x,ty:0,tz:T.position.z,d:vR*7,pitch:.32});
+  if(!res.alive){banner(`Power failure at ${lr.M.targetName}`,2600);SFX.sad();say(`Only ${fmt(res.pAvail)} W of power: the spacecraft cannot run its radio. Signal lost.`)}
+  else if(res.short){banner('Insertion burn short<br><span class="text-xl">propellant ran out: lower-quality orbit</span>',2600);say('Propellant margin was spent on anomalies: degraded orbit')}
+  else{banner(`Orbit insertion<br><span class="text-xl">${fmt(cr.mode==='moon'?lr.M.insertion:cfg.rr.dvCap/1000,2)} km/s burn · captured by ${lr.M.targetName}</span>`,2600);say(`Welcome to ${lr.M.targetName}. Science operations begin`)}}
+function updateOps(dt){opsT+=dt;const legendMode=launchRes.legend;
+  let T,vR;if(cr.mode==='moon'){placeMoon(cr.tof+opsT*.3);T=SYS.moon.m;vR=2.2}else{placeHelio(cr.jdEnd+opsT*.8);const id=cfg.rr.seq[cfg.rr.seq.length-1];T=SYS.bodies[id].m;vR=PH[id].vR}
+  const c=T.position;
+  if(legendMode){const s=helioState(cr.jdEnd),dir=new THREE.Vector3(s.v[0],0,-s.v[1]).normalize();SYS.craft.position.copy(c).addScaledVector(dir,vR*1.6+opsT*vR*.8).y+=vR*.4}
+  else{const a=opsT*1.4,rr=vR*2.4;SYS.craft.position.set(c.x+Math.cos(a)*rr,Math.sin(a*.5)*vR*.4,c.z-Math.sin(a)*rr);SYS.craft.lookAt(c.x+Math.cos(a+.1)*rr,0,c.z-Math.sin(a+.1)*rr)}
+  if(SYS.pulse&&SYS.pulse.userData.t!=null){const t=SYS.pulse.userData.t+=dt;SYS.pulse.position.copy(c);SYS.pulse.material.opacity=Math.max(0,1-t/1.6);SYS.pulse.scale.setScalar(vR*2+t*vR*6);if(t>1.6)SYS.pulse.userData.t=null}
+  des.tx=c.x;des.tz=c.z;des.yaw+=dt*.12;updateViewFX(dt,SYS.craft.position,AU,0);
+  if(legendMode){$('hudPhase').textContent='Encounter';$('hudDay').textContent=fmtDate(cr.jdEnd);hudRows([['Route',routeName(cfg.rr.seq)],['Duration',fmtDur(cfg.rr.tof)]]);if(opsT>4&&!flags.rep){flags.rep=1;showReport('legend')}return}
+  const f=sstep(.5,6.5,opsT),mo=f*res.M.life*Math.min(1,res.lifeFrac);
+  $('hudPhase').textContent=res.alive?'Science operations':'Signal lost';$('hudDay').textContent=`Month ${fmt(mo,1)}`;$('hudBar').style.width=(f*100)+'%';
+  hudRows([['Science',fmt(res.sci*f)+' / '+res.M.goal],['Data home',fmt(res.down,res.down<1?2:1)+' Gb/day'],['Instruments on',fmt(res.duty*100)+'%'],['Power',fmt(res.pAvail)+' W']]);
+  if(opsT>8&&!flags.rep){flags.rep=1;showReport('ops')}}
+
+/* ---- events ---- */
+const EVENTS=[
+  {id:'flare',tag:'Space weather',title:'Solar flare incoming',body:'A strong flare is hurling energetic particles toward the spacecraft. Instruments with high voltage are at risk.',
+    a:['Enter safe mode','Shut everything down for a few days. Lose 5% of science, zero risk.',()=>{mods.sciMul=(mods.sciMul||1)*.95;return'Safe mode held. The storm passed and you lost a little observing time.'}],
+    b:['Keep observing','No downtime, but a 40% chance a hot instrument is damaged.',()=>{if(cfg.inst.length&&Math.random()<.4){const id=cfg.inst.slice().sort((x,y)=>INSTR[y].pw-INSTR[x].pw)[0];mods.lost=id;return`Bad luck: the ${INSTR[id].name.toLowerCase()} was fried by the particle storm.`}return'The gamble paid off. No damage.'}]},
+  {id:'leak',tag:'Propulsion',title:'Thruster valve leak',body:'Telemetry shows a slow propellant leak. You can burn reserve propellant to stabilise, or switch to backup thrusters.',
+    a:['Use reserve propellant','Costs about 6% of your Δv margin. Fine if you packed enough.',()=>{mods.dvUse=(mods.dvUse||0)+.06;return mods.dvUse>cfg.margin/100?`That used ${fmt(mods.dvUse*100)}% of a ${cfg.margin}% margin. Orbit insertion will come up short.`:`Margin absorbed it (${fmt(mods.dvUse*100)}% of ${cfg.margin}% used). This is why margins exist.`}],
+    b:['Switch to backups','Engineers reconfigure the system. Costs $8M in extra operations.',()=>{mods.extraCost=(mods.extraCost||0)+8;return'Backup thrusters online. Your budget took an $8M hit.'}]},
+  {id:'budget',tag:'Headquarters',title:'Operations budget cut',body:'The agency trims 8% from your mission budget mid-flight. Something has to give.',
+    a:['Cut a DSN pass','Fewer hours of antenna time: less data home.',()=>{mods.budgetMul=.92;mods.passCut=(mods.passCut||0)+1;return cfg.passes>1?'One daily Deep Space Network pass dropped.':'You were already at one pass. Data rates stay, but the budget is tighter.'}],
+    b:['Shorten the mission','End science operations 25% earlier.',()=>{mods.budgetMul=.92;mods.lifeMul=(mods.lifeMul||1)*.75;return'Extended operations cancelled. Less time for science, less cost.'}]},
+  {id:'wheel',tag:'Guidance',title:'Reaction wheel failure',body:'One wheel that points the spacecraft has seized. Thrusters can take over pointing, or imaging can be reduced.',
+    a:['Point with thrusters','Spends about 3% of the Δv margin.',()=>{mods.dvUse=(mods.dvUse||0)+.03;return`Thrusters now handle pointing (${fmt(mods.dvUse*100)}% of ${cfg.margin}% margin used).`}],
+    b:['Reduce imaging','Cameras and spectrometers lose 30% of observing time.',()=>{mods.imgMul=(mods.imgMul||1)*.7;return'Imaging campaign trimmed to save the wheels.'}]}];
+function pickEvents(){if(legend)return[];const pool=EVENTS.slice(),out=[];for(const at of[.3,.62]){const i=(Math.random()*pool.length)|0;out.push(Object.assign({at},pool.splice(i,1)[0]))}return out}
+function openEvent(e){paused=true;SFX.alert();$('evt').hidden=false;$('evtTag').textContent=e.tag;$('evtTitle').textContent=e.title;$('evtBody').textContent=e.body;$('evtResult').hidden=true;$('evtGo').hidden=true;
+  $('evtOpts').innerHTML=[e.a,e.b].map((o,i)=>`<button class="opt" data-o="${i}"><b>${o[0]}</b><span>${o[1]}</span></button>`).join('');
+  $('evtOpts').querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const o=b.dataset.o==='0'?e.a:e.b;const msg=o[2]();$('evtOpts').querySelectorAll('button').forEach(x=>{x.disabled=true;x.classList.toggle('sel',x===b)});$('evtResult').textContent=msg;$('evtResult').hidden=false;$('evtGo').hidden=false;say(msg)})}
+$('evtGo').onclick=()=>{$('evt').hidden=true;paused=false};
+
+/* =====================================================================
+   13. REPORT + SHAREABLE MISSION PATCH
+   ===================================================================== */
+let lastReport=null;
+function showReport(kind){setPhase('report');$('hud').hidden=true;
+  const stat=(v,l)=>`<div class="bg-paper2 rounded-lg p-2.5"><b class="block text-lg font-extrabold tabular-nums">${v}</b><span class="text-[11px] text-muted font-semibold">${l}</span></div>`;
+  const bar=(l,f,col)=>`<div><div class="flex justify-between text-[11.5px] font-bold"><span>${l}</span><span>${fmt(clamp(f,0,1)*100)}%</span></div><div class="bar mt-1"><i style="width:${clamp(f,0,1)*100}%;background:${col}"></i></div></div>`;
+  const rr=cfg.rr,L=[];let n=0,title='',real='',tag='';
+  const routeBlock=()=>{if(!rr||!rr.ok)return'';const fs=fuelStats(rr);return`<div class="p-3 rounded-lg bg-paper2 border border-line">
+     <div class="flex flex-wrap items-center gap-1 text-[12px] font-bold">${rr.seq.map(id=>`<span class="inline-flex items-center gap-1"><i class="dot" style="background:${PH[id].col}"></i>${PH[id].name}</span>`).join('<span class="text-muted">→</span>')}</div>
+     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11.5px]"><div><b class="block text-[15px]">${fmt(rr.c3,1)}</b><span class="text-muted">C3 km²/s²</span></div><div><b class="block text-[15px] text-ok">+${fmt(rr.free/1000,2)}</b><span class="text-muted">km/s free speed</span></div><div><b class="block text-[15px]">${fmt(rr.dvEq/1000,2)}</b><span class="text-muted">km/s total Δv</span></div><div><b class="block text-[15px] ${fs.saved>0?'text-ok':'text-warn'}">${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,2)} t</b><span class="text-muted">propellant vs ${legend?'history':'direct'}</span></div></div></div>`};
+  if(legend){const ok=kind==='legend',hist=histRR;const s1=ok,s2=ok&&rr.dvEq<=hist.dvEq*1.03,s3=ok&&(rr.dvEq<hist.dvEq*.985||(rr.dvEq<=hist.dvEq*1.03&&rr.tof<hist.tof*.92));n=(s1?1:0)+(s2?1:0)+(s3?1:0);
+    tag=`${legend.name} · legendary route`;title=kind==='launch'?'Launch failure':kind==='crash'?`Crashed into ${PH[cr.crashed.id].name}`:s3?`You beat the ${legend.year} planners!`:s2?'As good as the original':'Reached the target, but costlier';
+    $('repStats').innerHTML=stat(fmt(rr.dvEq/1000,2)+' km/s','your total Δv')+stat(fmt(hist.dvEq/1000,2)+' km/s','historical Δv')+stat(fmtDur(rr.tof),'your flight time')+stat(fmtDur(hist.tof),'historical');
+    $('repBars').innerHTML='';
+    L.push(`Same physics, same ephemeris: the historical route needs ${fmt(hist.dvEq/1000,2)} km/s from low Earth orbit; yours needs ${fmt(rr.dvEq/1000,2)} km/s.`);
+    hist.flybys.forEach(f=>L.push(`Historical ${PH[f.id].name} flyby in this model: ${fmt(f.rpR,1)} planet radii, +${fmt(f.gain/1000,2)} km/s of free speed.`));
+    if(kind==='crash')L.push(`Your ${PH[cr.crashed.id].name} flyby needed to pass ${closeTxt(cr.crashed)}. Nudge the dates until every flyby is green.`);
+    real=legend.real}
+  else{const r=kind==='launch'?launchRes:compute(cfg,mods),M=r.M,crashed=kind==='crash';
+    const s1=r.launchOK&&r.alive&&!crashed,s2=s1&&r.sci>=M.goal,s3=s1&&r.cost<=r.budget;n=(s1?1:0)+(s2?1:0)+(s3?1:0);
+    tag=M.name+' · mission report';title=!r.launchOK?'Launch failure: payload too heavy':crashed?`Crashed into ${PH[cr.crashed.id].name}`:!r.alive?'Lost at '+M.targetName:n===3?'Mission accomplished':s2?'Science success, budget pain':'Partial success';
+    $('repStats').innerHTML=stat(fmt(s1?r.sci:0)+' / '+M.goal,'science points')+stat('$'+fmt(r.cost)+'M','spent of $'+fmt(r.budget)+'M')+stat(fmt(r.wet)+' kg','launch mass')+stat(!r.launchOK?'—':fmtDur(r.R.tof),!r.launchOK?'never left Earth':'cruise time');
+    $('repBars').innerHTML=bar('Instruments powered',s1?r.duty:0,'#e2b23c')+bar('Science value that reached Earth',s1?r.dataFrac:0,'#3f8f8a')+bar('Mission lifetime achieved',s1?Math.min(1,r.lifeFrac):0,'#e2772e');
+    if(!r.launchOK)L.push(`Your spacecraft weighed ${fmt(r.wet)} kg fully fueled, but the ${r.L.name.toLowerCase()} can push only ${fmt(r.cap)} kg to C3 ${fmt(r.R.c3,0)} km²/s², so it ran out of performance (the crash is dramatized; an underpowered rocket would more likely strand the payload in a useless orbit). ${M.helio?'Gravity assists lower the launch energy: that is the cheapest fix.':'Try a lighter bus or a bigger rocket.'}`);
+    if(crashed){L.push(`The ${PH[cr.crashed.id].name} flyby required passing ${closeTxt(cr.crashed)}. In the route planner, every flyby card must be green before launch.`);if(r.cost>r.budget)L.push(`Even without the crash, this design was over budget by $${fmt(r.cost-r.budget)}M.`)}
+    if(s1||(r.launchOK&&!crashed)){
+      if(!r.alive)L.push(`At ${M.sunDist} AU ${r.P.kind==='solar'?`solar arrays deliver only 1/${fmt(M.sunDist**2,0)} of their Earth power`:'your RTGs'} gave ${fmt(r.pAvail)} W, less than the ${fmt(r.base)} W the bus and radio need just to stay alive.`);
+      if(r.alive&&r.duty<1)L.push(`Instruments could only run ${fmt(r.duty*100)}% of the time: ${fmt(r.pAvail)} W available against ${fmt(r.base+r.iLoad)} W demanded.`);
+      if(r.alive&&r.dataFrac<1)L.push(`Downlink bottleneck: the ${r.A.name.toLowerCase()} sent ${fmt(r.down,r.down<1?2:1)} Gb/day but instruments produced ${fmt(r.gen,1)} Gb/day. Data rate grows with dish diameter² and falls with distance²; low-data instruments shine far from home.`);
+      if(M.rad&&!cfg.vault)L.push('Without a radiation vault, Jupiter\'s belts degraded the electronics within months. Real Jupiter missions put their brains in a shielded box.');
+      if(mods.lost)L.push(`The solar flare destroyed the ${INSTR[mods.lost].name.toLowerCase()}. Safe mode would have cost far less.`);
+      if(r.short)L.push(`Anomalies used ${fmt((mods.dvUse||0)*100)}% of Δv against a ${cfg.margin}% margin, so the insertion burn came up short. Margins are insurance, not waste.`);else if(mods.dvUse)L.push(`Anomalies used ${fmt(mods.dvUse*100)}% of Δv and your ${cfg.margin}% margin covered it.`);
+      if(r.cost>r.budget)L.push(`Over budget by $${fmt(r.cost-r.budget)}M. Operations alone cost $${fmt(r.ops)}M: long cruises and many DSN passes add up.`)}
+    if(M.helio&&rr&&rr.ok){const fs=fuelStats(rr);if(rr.flybys.length)L.push(`Your ${rr.flybys.length} flyby${rr.flybys.length>1?'s':''} gave +${fmt(rr.free/1000,2)} km/s of free speed and ${fs.saved>0?`saved ${fmt(fs.saved/1000,2)} t of propellant`:`cost ${fmt(-fs.saved/1000,2)} t more propellant`} compared with flying direct. ${fs.saved>0?'That is the gravity-assist slingshot: momentum borrowed from a planet\'s orbit.':'Free speed only helps if it points where you need to go: these flybys flung the spacecraft the wrong way, so the engine had to burn hard to correct it.'}`);
+      else if(M.id!=='mars')L.push('You flew direct. A gravity assist could lower the launch energy and shrink the rocket you need: try adding a flyby next time.')}
+    if(!L.length)L.push('Every subsystem had margin. This is what a balanced mission design looks like.');
+    real=M.real}
+  $('stars').innerHTML=[0,1,2].map(i=>`<span class="star" style="animation-delay:${.15+i*.18}s;color:${i<n?'#e2b23c':'#d8cdb8'}">★</span>`).join('');
+  $('repTitle').textContent=title;$('repTag').textContent=tag;$('repRoute').innerHTML=routeBlock();
+  $('repLessons').innerHTML=L.map(t=>`<li class="flex gap-2"><span class="text-flame font-extrabold">›</span><span>${t}</span></li>`).join('');
+  $('repReal').textContent=real;$('report').hidden=false;$('btnRedesign').textContent=legend?'Tune the route again':'Redesign this mission';
+  n>=2?SFX.chime():SFX.sad();lastReport={title,n,tag}}
+$('btnRedesign').onclick=()=>{$('report').hidden=true;if(legend){rebuildModels();startRoute()}else startDesign()};
+$('btnNew').onclick=()=>goBrief();
+$('btnShare').onclick=()=>{const c=makePatch(),a=document.createElement('a');a.download=`geodesic-${(legend?legend.id:cfg.mission)}-patch.png`;a.href=c.toDataURL('image/png');a.click();say('Mission patch saved')};
+function makePatch(){const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d'),rr=cfg.rr;
+  const bg=g.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#161d48');bg.addColorStop(1,'#3d2d6c');g.fillStyle=bg;g.fillRect(0,0,W,H);
+  const r=rng(9);for(let i=0;i<260;i++){g.fillStyle=`rgba(255,244,220,${.3+r()*.7})`;g.beginPath();g.arc(r()*W,r()*H,r()*2.2,0,TAU);g.fill()}
+  const cx=W/2,cy=520,R=360;g.fillStyle='#fbf6ec';g.beginPath();g.arc(cx,cy,R+26,0,TAU);g.fill();g.fillStyle='#2b2622';g.beginPath();g.arc(cx,cy,R+12,0,TAU);g.fill();
+  const pg=g.createRadialGradient(cx,cy-80,40,cx,cy,R);pg.addColorStop(0,'#2a3a7a');pg.addColorStop(1,'#141b3a');g.fillStyle=pg;g.beginPath();g.arc(cx,cy,R,0,TAU);g.fill();
+  g.save();g.beginPath();g.arc(cx,cy,R,0,TAU);g.clip();g.strokeStyle='rgba(160,150,240,.35)';g.lineWidth=2;for(let i=-8;i<=8;i++){g.beginPath();for(let k=-12;k<=12;k++){const x=cx+k*30,y=cy+i*30+90/(Math.hypot(k*30,i*30)/60+1);k===-12?g.moveTo(x,y):g.lineTo(x,y)}g.stroke()}g.restore();
+  g.fillStyle='#ffd27a';g.beginPath();g.arc(cx,cy,34,0,TAU);g.fill();
+  if(rr&&rr.ok){const pts=[];rr.legs.forEach(L=>{for(let i=0;i<=60;i++){const s=propagate(L.r1,L.v1,L.dt*i/60,MU_SUN);pts.push(s.r)}});const mx=Math.max(...pts.map(p=>visR(Math.hypot(p[0],p[1]))));const sc=(R-50)/mx;
+    g.strokeStyle='#ffa24a';g.lineWidth=7;g.lineCap='round';g.beginPath();pts.forEach((p,i)=>{const rr2=Math.hypot(p[0],p[1]),k=visR(rr2)/rr2*sc,x=cx+p[0]*k,y=cy-p[1]*k;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();
+    rr.P.forEach(P=>{const r2=Math.hypot(P.r[0],P.r[1]),k=visR(r2)/r2*sc;g.fillStyle=PH[P.id].col;g.strokeStyle='#fbf6ec';g.lineWidth=5;g.beginPath();g.arc(cx+P.r[0]*k,cy-P.r[1]*k,20,0,TAU);g.fill();g.stroke()})}
+  const name=legend?legend.name.toUpperCase():MISSIONS[cfg.mission].name.toUpperCase();g.fillStyle='#2b2622';g.font='800 46px "Plus Jakarta Sans",system-ui,sans-serif';g.textAlign='center';
+  const arcText=(t,rad,top)=>{const a0=-Math.PI/2,chars=[...t],step=.075;chars.forEach((ch,i)=>{const a=(top?a0:Math.PI/2)+(i-(chars.length-1)/2)*step*(top?1:-1);g.save();g.translate(cx+Math.cos(a)*rad,cy+Math.sin(a)*rad);g.rotate(a+(top?Math.PI/2:-Math.PI/2));g.fillStyle='#fbf6ec';g.fillText(ch,0,14);g.restore()})};
+  arcText(name,R-8+38-30,true);arcText('GEODESIC · MISSION ARCHITECT',R-8+38-30,false);
+  g.textAlign='center';g.fillStyle='#e2b23c';g.font='800 96px system-ui';g.fillText('★'.repeat(lastReport?lastReport.n:0)+'☆'.repeat(3-(lastReport?lastReport.n:0)),cx,1000);
+  g.fillStyle='#fbf6ec';g.font='800 50px "Plus Jakarta Sans",system-ui,sans-serif';g.fillText(lastReport?lastReport.title:'',cx,1090);
+  if(rr&&rr.ok){g.font='600 32px "Plus Jakarta Sans",system-ui,sans-serif';g.fillStyle='#cfd6ff';g.fillText(routeName(rr.seq),cx,1150);
+    const fs=fuelStats(rr);g.fillStyle='#8ff0c8';g.fillText(`+${fmt(rr.free/1000,1)} km/s free speed · ${fs.saved>0?'−':'+'}${fmt(Math.abs(fs.saved)/1000,1)} t propellant · ${fmtDate(rr.jds[0])}`,cx,1205)}
+  g.fillStyle='#8a93c8';g.font='600 26px "Plus Jakarta Sans",system-ui,sans-serif';g.fillText('NASA Space Apps Challenge · planet positions from NASA JPL',cx,H-60);return c}
+
+/* =====================================================================
+   14. FLIGHT SCHOOL (guided tutorial)
+   ===================================================================== */
+const TUT=[
+  {ph:'design',el:'kpis',t:'These numbers update live as you build. Green is good, amber is tight, red means the mission fails.'},
+  {ph:'design',el:'panel',t:'Pick parts here. Every part adds mass, power draw and cost. Jupiter is dark and far: look at the Power and Antenna notes.'},
+  {ph:'design',el:'btnNext',t:'Flying straight to Jupiter needs a giant rocket. Let\'s plan a smarter route.',wait:'route'},
+  {ph:'route',el:'fuelBox',t:'This compares your route with flying direct. Right now you ARE flying direct, so there is nothing saved yet.'},
+  {ph:'route',el:'addFly',t:'Add a flyby. Try + Mars, then + Earth: each planet you pass can lend you speed for free (Mars then Earth works well for Jupiter).',wait:'flyby'},
+  {ph:'route',el:'btnTune',t:'Planets only help when they are in the right place. Auto-tune searches thousands of launch dates for an alignment.',wait:'tune'},
+  {ph:'route',el:'flybyList',t:'Each card shows how close you pass. Behind a planet = speed gained. Red = you would hit it. Drag the date sliders to see it change.'},
+  {ph:'route',el:'btnLaunch2',t:'Check the propellant saved and the rocket check on the left, then launch. Good luck, architect!',wait:'launch'}];
+let tut=-1,tutOn=false,tutEl=null;
+function tutShow(){if(tutEl){tutEl.classList.remove('coach-hi');tutEl=null}const co=$('coach');if(!tutOn||tut<0||tut>=TUT.length){co.hidden=true;return}
+  const s=TUT[tut];if(s.ph!==phase){co.hidden=true;return}
+  requestAnimationFrame(()=>{const el=$(s.el);if(!el){co.hidden=true;return}tutEl=el;el.classList.add('coach-hi');if(getComputedStyle(el).position==='static')el.style.position='relative';
+    el.scrollIntoView({block:'nearest',behavior:'smooth'});
+    $('coachT').textContent=s.t;$('coachN').textContent=`${tut+1} / ${TUT.length}`;$('coachNext').hidden=!!s.wait;co.hidden=false;
+    const b=el.getBoundingClientRect(),cw=300,ch=co.offsetHeight||150;let x,y;
+    if(b.left>innerWidth*.55){x=b.left-cw-16;y=clamp(b.top,70,innerHeight-ch-10)}else if(b.right<innerWidth*.45){x=b.right+16;y=clamp(b.top,70,innerHeight-ch-10)}else{x=clamp(b.left,10,innerWidth-cw-10);y=b.bottom+12}
+    co.style.left=clamp(x,10,innerWidth-cw-10)+'px';co.style.top=clamp(y,10,innerHeight-ch-10)+'px'})}
+function tutEvent(name){if(!tutOn||tut<0||tut>=TUT.length)return;const i=TUT.findIndex((x,k)=>k>=tut&&x.wait===name);if(i<0)return;tut=i+1;setTimeout(tutShow,150)}
+$('coachNext').onclick=()=>{tut++;tutShow()};$('coachSkip').onclick=()=>{tutOn=false;tutShow()};
+
+/* =====================================================================
+   15. LOOP
+   ===================================================================== */
+let last=performance.now(),TS=1;
+cfg=defaults('mars');rebuildModels();setPhase('brief');Object.assign(des,{tx:-20,ty:12,tz:-40,d:120,yaw:.75,pitch:.12});Object.assign(rig,des);rig.d=160;setView('einstein');
+function frame(now){const dt=Math.min(.05,(now-last)/1000)*TS;last=now;
+  if(phase==='brief')des.yaw+=dt*.04;
+  if(phase==='design'){if(craftStand)craftStand.rotation.y+=dt*.35;if(autoSpin)des.yaw+=dt*.05}
+  if(phase==='route'&&SYS){gridMat.uniforms.amp.value+=(1-gridMat.uniforms.amp.value)*Math.min(1,dt*3);if(SYS.craft&&cfg.rr&&cfg.rr.ok){SYS.craft.position.copy(toVis(cfg.rr.P[0].r,.3))}if(SYS.arrS)SYS.arrS.visible=SYS.arrP.visible=false;placeHelio(cfg.rr.ok?cfg.rr.jds[0]:cfg.route.jd0)}
+  if(phase==='launch')updateLaunch(dt);
+  if(phase==='cruise')updateCruise(dt);
+  if(phase==='ops')updateOps(dt);
+  placeCam(dt);renderer.render(active,camera);requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+window.__game={ts:v=>TS=v,get phase(){return phase},get res(){return res},cfg:()=>cfg,start:id=>startMission(id),legend:id=>startLegend(id),school:()=>$('btnSchool').onclick(),
+  set:o=>{Object.assign(cfg,o);onDesign()},toRoute:()=>startRoute(),route:(seq)=>{cfg.route.seq=seq.slice();cfg.route.tofs=seq.slice(0,-1).map((a,i)=>legDefault(a,seq[i+1]));renderRoutePanel();refreshRoute(true)},
+  tune:()=>autoTune(),tuning:()=>$('btnTune')?$('btnTune').disabled:false,launch:()=>doLaunch(),rr:()=>{const r=cfg.rr;return r&&r.ok?{c3:r.c3,dvEq:r.dvEq,dvSc:r.dvSc,crash:r.crash,tof:r.tof,seq:r.seq}:r},compute:()=>{const r=compute(cfg);return{wet:r.wet,cap:r.cap,cost:r.cost,budget:r.budget,sci:r.sci,launchOK:r.launchOK,alive:r.alive,duty:r.duty,dataFrac:r.dataFrac}},
+  runTo:(ph)=>new Promise(res=>{const t0=performance.now();const iv=setInterval(()=>{const b=document.querySelector('[data-o="0"]');if(b&&!$('evt').hidden){b.click();$('evtGo').click()}if(phase===ph||performance.now()-t0>120000){clearInterval(iv);res(phase)}},250)}),choose:i=>{const b=document.querySelector('[data-o="'+i+'"]');if(!b||$('evt').hidden)return'none';b.click();$('evtGo').click();return'chose'},view:v=>setView(v),patch:()=>makePatch().toDataURL().length,patchURL:()=>makePatch().toDataURL()};
+</script>
+</body>
+</html>

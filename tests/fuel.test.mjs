@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8').replace(/\r/g,'');
 const helpers=html.slice(html.indexOf('const TAU='),html.indexOf('/* =====================================================================\n   1.'));
 const engine=html.slice(html.indexOf('const G0='),html.indexOf('/* =====================================================================\n   2.'));
-const a=vm.runInNewContext(helpers+engine+';({fuelLoad,fuelMass,availableImpulse,spendImpulse,ISP,G0,makeLaunchStages,stepLaunchStages,captureState,partialVelocity,assessEncounter,ephemPos,jdOf,DAY,MU_SUN,lambert})');
+const a=vm.runInNewContext(helpers+engine+';({fuelLoad,fuelMass,availableImpulse,spendImpulse,ISP,G0,makeLaunchStages,stepLaunchStages,captureState,partialVelocity,assessEncounter,ephemPos,jdOf,DAY,MU_SUN,lambert,stepEDL})');
 const t=a.fuelLoad(500,2000,.1),copy={...t};
 const expected=a.fuelMass(t)*(-Math.expm1(-800/(a.ISP*a.G0)));
 const burn=a.spendImpulse(t,'main',800);
@@ -35,3 +35,8 @@ const jd=a.jdOf(2027,1,1),duration=260*a.DAY,r1=a.ephemPos('earth',jd),r2=a.ephe
 assert.ok(a.assessEncounter(r1,l.v1,'mars',jd,duration).impact,'a real intercept impacts');
 assert.ok(!a.assessEncounter(r1,[l.v1[0]+3000,l.v1[1]],'mars',jd,duration).impact,'a propagated miss does not explode');
 console.log('Partial capture energy and correction/intersection checks passed');
+
+const reserve=a.fuelLoad(500,2000,.1),mainBefore=reserve.main;a.spendImpulse(reserve,'attitude',100,60);assert.equal(reserve.attitude,0);assert.equal(reserve.main,mainBefore);
+const xenon=a.fuelLoad(500,2000,.1,100);assert.ok(Math.abs(a.availableImpulse(xenon,'ion',3000)-110)<1e-8,'ion load covers early correction on full wet mass');
+const descent={moon:true,h:1000,v:50,mass:500,fuel:0,engine:true,chute:false,heat:0,t:0};for(let i=0;i<10000&&descent.h>0;i++)a.stepEDL(descent,.01);assert.ok(Math.abs(descent.v-Math.sqrt(50**2+2*1.62*1000))<.1,'empty descent tank follows lunar free fall');
+console.log('Separate attitude reserve, wet-mass xenon loading and empty-tank free fall passed');

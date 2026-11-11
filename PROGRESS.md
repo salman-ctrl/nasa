@@ -214,3 +214,11 @@ Step 0 complete: node tests/astro.test.mjs and node tests/smoke.mjs passed. Brow
 Final expanded smoke PASS: all five missions completed flight/operations to reports, Voyager 2 NASA model/aiming/cinematic/chase passed, Saturn tour and Mars aerobraking passed, career persisted across reload, all 390 px sheets and reference viewers worked under /geodesic with reduced motion, and a separate overloaded lunar launch failed as expected. Zero console/page errors. Final targeted Voyager/chase recheck also passed. README and phase status are current; all authorized implementation phases are complete with the two documented data availability fallbacks and hardware frame-rate measurement outstanding.
 
 Final model decision: chase uses the articulated engineering spacecraft so Sun/Earth pointing remains functional; NASA Voyager geometry is retained in map/flyby views and all downloaded models in the reference viewer.
+
+## Live propellant - Part 1: shared tanks and gauge
+- Added separate chemical, xenon and attitude loads. Main burns consume mass with the rocket equation using current total spacecraft mass; finite delivery is independent of frame partition.
+- Persistent kg/loaded-percent tank gauge covers ascent, cruise, capture, aerobraking decisions, descent and operations. Low warning compares chemical fuel with outstanding planned burns.
+- Connected cruise TCM, aim/rejoin, powered flybys (including Skip), capture, orbit lowering, moon-tour and anomaly burns; descent draws from the same chemical tank instead of a fresh impulse allowance.
+- Burn rows retain planned/delivered delta-v, kilograms and depletion moment. Physical failure routing and attitude consumption follow in Parts 3-4; stage propellant follows in Part 2.
+- Sources label tank allocations and compressed burn durations as game models; rocket equation links NASA Glenn.
+- Tests: fuel conservation, partition independence, empty-tank bounds and separate xenon pass; engineering, historical regressions and all-mission browser smoke pass with zero errors.
